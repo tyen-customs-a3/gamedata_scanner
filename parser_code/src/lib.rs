@@ -7,6 +7,7 @@ use hemtt_preprocessor::Processor;
 use hemtt_workspace::{reporting::{Codes, Processed, Code, Diagnostic, Severity}, LayerType, Workspace, WorkspacePath};
 use serde::{Serialize, Deserialize};
 use tempfile::NamedTempFile;
+use log::debug;
 
 mod parser;
 pub use parser::*;
@@ -90,11 +91,11 @@ impl CodeParser {
     /// Parse all classes and return them as a flat list
     pub fn parse_classes(&self) -> Vec<CodeClass> {
         let mut classes = Vec::new();
-        println!("\n=== Starting class parsing ===");
+        debug!("\n=== Starting class parsing ===");
         self.extract_classes(&self.config, &mut classes);
-        println!("\n=== Final class list ===");
+        debug!("\n=== Final class list ===");
         for class in &classes {
-            println!("Class: {} (parent: {:?})", class.name, class.parent);
+            debug!("Class: {} (parent: {:?})", class.name, class.parent);
         }
         classes
     }
@@ -104,7 +105,7 @@ impl CodeParser {
             if let Property::Class(class) = property {
                 match class {
                     Class::Local { name, parent, properties, .. } => {
-                        println!("Processing Local class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
+                        debug!("Processing Local class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                         
                         // Process forward declarations
                         self.process_forward_declarations(properties, classes);
@@ -114,7 +115,7 @@ impl CodeParser {
                         classes.push(code_class);
                     },
                     Class::External { name, .. } => {
-                        println!("Processing External class (forward declaration): {}", name.as_str());
+                        debug!("Processing External class (forward declaration): {}", name.as_str());
                         // Handle forward declarations
                         classes.push(CodeClass {
                             name: name.as_str().to_string(),
@@ -123,7 +124,7 @@ impl CodeParser {
                         });
                     },
                     Class::Root { properties, .. } => {
-                        println!("Processing Root class with {} properties", properties.len());
+                        debug!("Processing Root class with {} properties", properties.len());
                         
                         // Process forward declarations in root
                         self.process_forward_declarations(properties, classes);
@@ -132,7 +133,7 @@ impl CodeParser {
                         for prop in properties {
                             if let Property::Class(nested_class) = prop {
                                 if let Class::Local { name, parent, properties, .. } = nested_class {
-                                    println!("  Found local class in root: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
+                                    debug!("  Found local class in root: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                                     
                                     let code_class = self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, true);
                                     
@@ -158,7 +159,7 @@ impl CodeParser {
     fn process_forward_declarations(&self, properties: &[Property], classes: &mut Vec<CodeClass>) {
         for prop in properties {
             if let Property::Class(Class::External { name, .. }) = prop {
-                println!("  Found forward declaration: {}", name.as_str());
+                debug!("  Found forward declaration: {}", name.as_str());
                 classes.push(CodeClass {
                     name: name.as_str().to_string(),
                     parent: None,
@@ -192,7 +193,7 @@ impl CodeParser {
         for prop in properties {
             match prop {
                 Property::Entry { name, value, .. } => {
-                    println!("  Adding property: {}", name.as_str());
+                    debug!("  Adding property: {}", name.as_str());
                     class.properties.push(CodeProperty {
                         name: name.as_str().to_string(),
                         value: self.convert_value(value),
@@ -200,7 +201,7 @@ impl CodeParser {
                 },
                 Property::Class(nested_class) => {
                     if let Class::Local { name, parent, properties, .. } = nested_class {
-                        println!("  Processing nested class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
+                        debug!("  Processing nested class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                         
                         // Create a new class for the nested class
                         let nested_code_class = self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, true);

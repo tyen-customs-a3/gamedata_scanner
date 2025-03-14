@@ -14,6 +14,7 @@ hemtt-common = { workspace = true }
 chumsky = "0.9.3"
 serde = { version = "1.0.219", features = ["derive"] }
 tempfile = "3.18.0"
+log = "0.4.26"
 
 [lints.rust]
 dead_code = "allow"
