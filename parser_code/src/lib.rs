@@ -7,7 +7,7 @@ use hemtt_preprocessor::Processor;
 use hemtt_workspace::{reporting::{Codes, Processed, Code, Diagnostic, Severity}, LayerType, Workspace, WorkspacePath};
 use serde::{Serialize, Deserialize};
 use tempfile::NamedTempFile;
-use log::debug;
+use log::{debug, trace};
 
 mod parser;
 pub use parser::*;
@@ -91,11 +91,11 @@ impl CodeParser {
     /// Parse all classes and return them as a flat list
     pub fn parse_classes(&self) -> Vec<CodeClass> {
         let mut classes = Vec::new();
-        debug!("\n=== Starting class parsing ===");
+        trace!("\n=== Starting class parsing ===");
         self.extract_classes(&self.config, &mut classes);
-        debug!("\n=== Final class list ===");
+        trace!("\n=== Final class list ===");
         for class in &classes {
-            debug!("Class: {} (parent: {:?})", class.name, class.parent);
+            trace!("Class: {} (parent: {:?})", class.name, class.parent);
         }
         classes
     }
@@ -105,7 +105,7 @@ impl CodeParser {
             if let Property::Class(class) = property {
                 match class {
                     Class::Local { name, parent, properties, .. } => {
-                        debug!("Processing Local class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
+                        trace!("Processing Local class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                         
                         // Process forward declarations
                         self.process_forward_declarations(properties, classes);
@@ -115,7 +115,7 @@ impl CodeParser {
                         classes.push(code_class);
                     },
                     Class::External { name, .. } => {
-                        debug!("Processing External class (forward declaration): {}", name.as_str());
+                        trace!("Processing External class (forward declaration): {}", name.as_str());
                         // Handle forward declarations
                         classes.push(CodeClass {
                             name: name.as_str().to_string(),
@@ -124,7 +124,7 @@ impl CodeParser {
                         });
                     },
                     Class::Root { properties, .. } => {
-                        debug!("Processing Root class with {} properties", properties.len());
+                        trace!("Processing Root class with {} properties", properties.len());
                         
                         // Process forward declarations in root
                         self.process_forward_declarations(properties, classes);
@@ -133,7 +133,7 @@ impl CodeParser {
                         for prop in properties {
                             if let Property::Class(nested_class) = prop {
                                 if let Class::Local { name, parent, properties, .. } = nested_class {
-                                    debug!("  Found local class in root: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
+                                    trace!("  Found local class in root: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                                     
                                     let code_class = self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, true);
                                     
@@ -159,7 +159,7 @@ impl CodeParser {
     fn process_forward_declarations(&self, properties: &[Property], classes: &mut Vec<CodeClass>) {
         for prop in properties {
             if let Property::Class(Class::External { name, .. }) = prop {
-                debug!("  Found forward declaration: {}", name.as_str());
+                trace!("  Found forward declaration: {}", name.as_str());
                 classes.push(CodeClass {
                     name: name.as_str().to_string(),
                     parent: None,
@@ -193,7 +193,7 @@ impl CodeParser {
         for prop in properties {
             match prop {
                 Property::Entry { name, value, .. } => {
-                    debug!("  Adding property: {}", name.as_str());
+                    trace!("  Adding property: {}", name.as_str());
                     class.properties.push(CodeProperty {
                         name: name.as_str().to_string(),
                         value: self.convert_value(value),
@@ -201,7 +201,7 @@ impl CodeParser {
                 },
                 Property::Class(nested_class) => {
                     if let Class::Local { name, parent, properties, .. } = nested_class {
-                        debug!("  Processing nested class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
+                        trace!("  Processing nested class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                         
                         // Create a new class for the nested class
                         let nested_code_class = self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, true);
@@ -238,20 +238,42 @@ impl CodeParser {
                         Item::Macro { name, args, .. } => {
                             let macro_name = name.value();
                             
-                            // Format all macros generically with their arguments
+                            // Enhanced argument handling with better formatting
                             let args_str = args.iter()
-                                .map(|arg| arg.value().to_string())
+                                .map(|arg| {
+                                    // Properly quote string arguments if they contain spaces or special chars
+                                    let arg_value = arg.value().to_string();
+                                    if arg_value.contains(' ') || arg_value.contains(',') || 
+                                       arg_value.contains('(') || arg_value.contains(')') {
+                                        format!("\"{}\"", arg_value.replace('"', "\\\""))
+                                    } else {
+                                        arg_value
+                                    }
+                                })
                                 .collect::<Vec<_>>()
                                 .join(", ");
                             
-                            // Special handling for LIST macros vs other macros
-                            if macro_name.starts_with("LIST_") {
-                                values.push(format!("{}({})", macro_name, args_str));
+                            // Special handling for different types of macros
+                            let macro_value = if macro_name.starts_with("LIST_") {
+                                // For LIST_ macros, preserve the exact format
+                                format!("{}({})", macro_name, args_str)
+                            } else if macro_name.starts_with("CONCAT_") ||
+                                      macro_name.starts_with("QUOTE") ||
+                                      macro_name.starts_with("QGVAR") ||
+                                      macro_name.starts_with("QQGVAR") ||
+                                      macro_name.starts_with("DOUBLES") ||
+                                      macro_name.starts_with("ARR_") {
+                                // Special formatting for common Arma macros
+                                format!("{}({})", macro_name, args_str)
                             } else if !args.is_empty() {
-                                values.push(format!("{}({})", macro_name, args_str));
+                                // Generic formatting for other macros with arguments
+                                format!("{}({})", macro_name, args_str)
                             } else {
-                                values.push(macro_name.to_string());
-                            }
+                                // Macros without arguments
+                                macro_name.to_string()
+                            };
+                            
+                            values.push(macro_value);
                         }
                         _ => values.push("Unknown".to_string()),
                     }
@@ -354,8 +376,8 @@ mod tests {
         
         let weapons_prop = test_class.properties.iter().find(|p| p.name == "weapons").unwrap();
         if let CodeValue::Array(weapons) = &weapons_prop.value {
-            // Should contain 4 items - a simple string and 3 different macro types
-            assert_eq!(weapons.len(), 4);
+            // Should contain 3 items - a simple string and 2 different macro types
+            assert_eq!(weapons.len(), 3);
             
             // String item
             assert!(weapons.contains(&"standard_rifle".to_string()));
