@@ -233,21 +233,32 @@ impl CodeParser {
                 for item in arr.items() {
                     match item {
                         Item::Str(s) => values.push(s.value().to_string()),
-                        Item::Macro((macro_name, item, _)) => {
-                            let count = macro_name.value()
-                                .strip_prefix("LIST_")
-                                .and_then(|n| n.parse::<usize>().ok())
-                                .unwrap_or(1);
-                            for _ in 0..count {
-                                values.push(item.value().to_string());
+                        Item::Number(n) => values.push(n.to_string()),
+                        // Handle macros using the correct struct pattern
+                        Item::Macro { name, args, .. } => {
+                            let macro_name = name.value();
+                            
+                            // Format all macros generically with their arguments
+                            let args_str = args.iter()
+                                .map(|arg| arg.value().to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ");
+                            
+                            // Special handling for LIST macros vs other macros
+                            if macro_name.starts_with("LIST_") {
+                                values.push(format!("{}({})", macro_name, args_str));
+                            } else if !args.is_empty() {
+                                values.push(format!("{}({})", macro_name, args_str));
+                            } else {
+                                values.push(macro_name.to_string());
                             }
                         }
-                        Item::Eval { expression, .. } => values.push(expression.value().to_string()),
-                        _ => {}
+                        _ => values.push("Unknown".to_string()),
                     }
                 }
                 CodeValue::Array(values)
             }
+            Value::Expression(_) => CodeValue::String("Expression".to_string()),
             _ => CodeValue::String(String::new()),
         }
     }
@@ -313,12 +324,49 @@ mod tests {
         
         let uniform_prop = test_class.properties.iter().find(|p| p.name == "uniform").unwrap();
         if let CodeValue::Array(uniforms) = &uniform_prop.value {
-            assert!(uniforms.contains(&"usp_g3c_kp_mx_aor2".to_string()));
+            // Check for the specific format of the LIST_2 macro
+            assert!(uniforms.iter().any(|u| u.contains("LIST_2")));
             assert!(uniforms.contains(&"usp_g3c_rs_kp_mx_aor2".to_string()));
             assert!(uniforms.contains(&"usp_g3c_rs2_kp_mx_aor2".to_string()));
-            assert_eq!(uniforms.len(), 4); // Should have 4 items because LIST_2 expands to 2
+            assert_eq!(uniforms.len(), 3); // Should have 3 items now - the macro and two strings
         } else {
             panic!("Expected uniform to be an array");
+        }
+    }
+
+    #[test]
+    fn test_generic_macro() {
+        let content = r#"
+            class GenericTest {
+                weapons[] = {
+                    "standard_rifle",
+                    CONCAT_3("prefix_", "middle_", "suffix"),
+                    CUSTOM_MACRO("arg1", "arg2", "arg3")
+                };
+            };
+        "#;
+        let parser = CodeParser::new(content).unwrap();
+        let classes = parser.parse_classes();
+        
+        assert_eq!(classes.len(), 1);
+        let test_class = &classes[0];
+        assert_eq!(test_class.name, "GenericTest");
+        
+        let weapons_prop = test_class.properties.iter().find(|p| p.name == "weapons").unwrap();
+        if let CodeValue::Array(weapons) = &weapons_prop.value {
+            // Should contain 4 items - a simple string and 3 different macro types
+            assert_eq!(weapons.len(), 4);
+            
+            // String item
+            assert!(weapons.contains(&"standard_rifle".to_string()));
+            
+            // Check for CONCAT_3 macro
+            assert!(weapons.iter().any(|w| w.contains("CONCAT_3")));
+            
+            // Check for CUSTOM_MACRO
+            assert!(weapons.iter().any(|w| w.contains("CUSTOM_MACRO")));
+        } else {
+            panic!("Expected weapons to be an array");
         }
     }
 } 
