@@ -92,6 +92,7 @@ impl CodeParser {
     pub fn parse_classes(&self) -> Vec<CodeClass> {
         let mut classes = Vec::new();
         trace!("\n=== Starting class parsing ===");
+        
         self.extract_classes(&self.config, &mut classes);
         trace!("\n=== Final class list ===");
         for class in &classes {
@@ -101,70 +102,93 @@ impl CodeParser {
     }
 
     fn extract_classes(&self, config: &Config, classes: &mut Vec<CodeClass>) {
+        // First pass: Process all class declarations (both forward declarations and full definitions)
         for property in config.0.iter() {
             if let Property::Class(class) = property {
                 match class {
-                    Class::Local { name, parent, properties, .. } => {
-                        trace!("Processing Local class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
-                        
-                        // Process forward declarations
-                        self.process_forward_declarations(properties, classes);
-                        
-                        // Create and add the class
-                        let code_class = self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, false);
-                        classes.push(code_class);
-                    },
+                    // Handle external class (forward declaration)
                     Class::External { name, .. } => {
-                        trace!("Processing External class (forward declaration): {}", name.as_str());
-                        // Handle forward declarations
-                        classes.push(CodeClass {
-                            name: name.as_str().to_string(),
-                            parent: None,
-                            properties: Vec::new(),
-                        });
+                        trace!("Processing external class declaration: {}", name.as_str());
+                        if !classes.iter().any(|c| c.name == name.as_str()) {
+                            classes.push(CodeClass {
+                                name: name.as_str().to_string(),
+                                parent: None,
+                                properties: Vec::new(),
+                            });
+                        }
                     },
+                    
+                    // Handle local class (full definition)
+                    Class::Local { name, parent, properties, .. } => {
+                        trace!("Processing local class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
+                        
+                        // Add parent as forward declaration if needed
+                        if let Some(parent_name) = parent.as_ref() {
+                            if !classes.iter().any(|c| c.name == parent_name.as_str()) {
+                                trace!("  Adding parent as forward declaration: {}", parent_name.as_str());
+                                classes.push(CodeClass {
+                                    name: parent_name.as_str().to_string(),
+                                    parent: None,
+                                    properties: Vec::new(),
+                                });
+                            }
+                        }
+                        
+                        // Remove any existing forward declaration of this class
+                        if let Some(idx) = classes.iter().position(|c| c.name == name.as_str()) {
+                            classes.remove(idx);
+                        }
+                        
+                        // Create the class with its full definition
+                        self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, true);
+                    },
+                    
+                    // Handle root class (container for other classes)
                     Class::Root { properties, .. } => {
-                        trace!("Processing Root class with {} properties", properties.len());
+                        trace!("Processing root class");
                         
-                        // Process forward declarations in root
-                        self.process_forward_declarations(properties, classes);
-                        
-                        // Process regular classes in root
+                        // Process forward declarations in root properties
                         for prop in properties {
-                            if let Property::Class(nested_class) = prop {
-                                if let Class::Local { name, parent, properties, .. } = nested_class {
-                                    trace!("  Found local class in root: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
-                                    
-                                    let code_class = self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, true);
-                                    
-                                    // Also add it as a property of the root class
+                            if let Property::Class(Class::External { name, .. }) = prop {
+                                trace!("  Found forward declaration in root: {}", name.as_str());
+                                if !classes.iter().any(|c| c.name == name.as_str()) {
                                     classes.push(CodeClass {
-                                        name: "CfgWeapons".to_string(),
+                                        name: name.as_str().to_string(),
                                         parent: None,
-                                        properties: vec![CodeProperty {
-                                            name: name.as_str().to_string(),
-                                            value: CodeValue::Class(code_class),
-                                        }],
+                                        properties: Vec::new(),
                                     });
                                 }
                             }
                         }
+                        
+                        // Process local classes in root
+                        for prop in properties {
+                            if let Property::Class(Class::Local { name, parent, properties, .. }) = prop {
+                                trace!("  Processing local class in root: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
+                                
+                                // Add parent as forward declaration if needed
+                                if let Some(parent_name) = parent.as_ref() {
+                                    if !classes.iter().any(|c| c.name == parent_name.as_str()) {
+                                        trace!("    Adding parent as forward declaration: {}", parent_name.as_str());
+                                        classes.push(CodeClass {
+                                            name: parent_name.as_str().to_string(),
+                                            parent: None,
+                                            properties: Vec::new(),
+                                        });
+                                    }
+                                }
+                                
+                                // Remove any existing forward declaration of this class
+                                if let Some(idx) = classes.iter().position(|c| c.name == name.as_str()) {
+                                    classes.remove(idx);
+                                }
+                                
+                                // Create the class with its full definition
+                                self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, true);
+                            }
+                        }
                     }
                 }
-            }
-        }
-    }
-    
-    /// Process forward declarations in a list of properties
-    fn process_forward_declarations(&self, properties: &[Property], classes: &mut Vec<CodeClass>) {
-        for prop in properties {
-            if let Property::Class(Class::External { name, .. }) = prop {
-                trace!("  Found forward declaration: {}", name.as_str());
-                classes.push(CodeClass {
-                    name: name.as_str().to_string(),
-                    parent: None,
-                    properties: Vec::new(),
-                });
             }
         }
     }
@@ -180,8 +204,8 @@ impl CodeParser {
         // Process properties
         self.process_class_properties(properties, &mut code_class, classes);
         
-        // If the class has a parent and we're instructed to add it to classes, do so
-        if add_to_classes && code_class.parent.is_some() {
+        // If we're instructed to add it to classes, do so regardless of parent
+        if add_to_classes {
             classes.push(code_class.clone());
         }
         
