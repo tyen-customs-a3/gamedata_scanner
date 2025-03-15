@@ -26,6 +26,7 @@ chrono = "0.4.34"
 regex = "1.10.3"
 lazy_static = "1.4.0"
 pathdiff = "0.2.1"
+rayon = "1.8.0"
 
 [lints.rust]
 dead_code = "allow"

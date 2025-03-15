@@ -67,3 +67,195 @@ fn test_loadout_parsing() {
         }
     }
 } 
+
+#[test]
+fn test_ace_medical_items() {
+    // Read the config file
+    let mut content = fs::read_to_string("tests/fixtures/ace_cfg.hpp").unwrap_or_else(|e| {
+        panic!("Failed to read ace_cfg.hpp: {}\nCurrent dir: {:?}", 
+            e, std::env::current_dir().unwrap_or_default())
+    });
+    
+    // Remove leading/trailing whitespace
+    content = content.trim().to_string();
+    
+    // Add preprocessor definitions and string definitions
+    let definitions = r#"
+        #define QUOTE(var1) #var1
+        #define DOUBLES(var1,var2) ##var1##_##var2
+        #define PREFIX ace
+        #define GVAR(var1) DOUBLES(PREFIX,var1)
+        #define QPATHTOF(var1) QUOTE(PATHTOF(var1))
+        #define PATHTOF(var1) \data\##var1
+        #define CSTRING(var1) QUOTE(DOUBLES(STR,var1))
+        #define ECSTRING(var1,var2) QUOTE(DOUBLES(STR,DOUBLES(var1,var2)))
+        #define STR_common_ACETeam "ACE Team"
+        #define STR_Bandage_Basic_Display "Basic Bandage"
+        #define STR_Bandage_Basic_Desc_Short "Basic first aid bandage"
+        #define STR_Bandage_Basic_Desc_Use "Use to stop bleeding"
+    "#;
+    
+    content = format!("{}\n{}", definitions, content);
+    
+    // Try parsing and capture any errors
+    let parser = match CodeParser::new(&content) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("Parser initialization failed: {:?}", e);
+            println!("Content that failed to parse:\n{}", content);
+            panic!("Failed to initialize parser");
+        }
+    };
+    
+    let classes = parser.parse_classes();
+    
+    // Debug: Print all top-level classes found
+    println!("\nFound {} top-level classes:", classes.len());
+    for class in &classes {
+        println!("Class: {} (parent: {:?})", class.name, class.parent);
+        println!("  Properties count: {}", class.properties.len());
+        if class.name == "CfgWeapons" {
+            println!("  CfgWeapons properties:");
+            for prop in &class.properties {
+                println!("    {}: {:?}", prop.name, prop.value);
+            }
+        }
+    }
+    
+    // Find CfgWeapons class with better error handling
+    let cfg_weapons = classes.iter()
+        .find(|c| c.name == "CfgWeapons")
+        .unwrap_or_else(|| {
+            println!("\nFailed to find CfgWeapons class. Available classes:");
+            for class in &classes {
+                println!("- {} (parent: {:?})", class.name, class.parent);
+                println!("  Properties:");
+                for prop in &class.properties {
+                    println!("    {}: {:?}", prop.name, prop.value);
+                }
+            }
+            panic!("CfgWeapons class not found in parsed content");
+        });
+
+    // Test base class declarations
+    let base_classes = vec![
+        "ItemCore",
+        "ACE_ItemCore",
+        "CBA_MiscItem_ItemInfo",
+        "InventoryFirstAidKitItem_Base_F",
+        "MedikitItem"
+    ];
+    
+    for base_class in base_classes {
+        let class = classes.iter()
+            .find(|c| c.name == base_class)
+            .unwrap_or_else(|| panic!("Base class {} not found", base_class));
+        
+        // Forward declarations should have no properties
+        assert!(class.properties.is_empty(), "Base class {} should have no properties", base_class);
+    }
+
+    // Test medical items
+    let medical_items = vec![
+        // Basic medical items
+        ("ACE_fieldDressing", "ACE_ItemCore", 0, true),
+        ("ACE_packingBandage", "ACE_ItemCore", 0, true),
+        ("ACE_elasticBandage", "ACE_ItemCore", 0, true),
+        ("ACE_tourniquet", "ACE_ItemCore", 1, true),
+        ("ACE_splint", "ACE_ItemCore", 2, true),
+        ("ACE_morphine", "ACE_ItemCore", 1, true),
+        ("ACE_adenosine", "ACE_ItemCore", 1, true),
+        ("ACE_epinephrine", "ACE_ItemCore", 1, true),
+        ("ACE_surgicalKit", "ACE_ItemCore", 15, true),
+        ("ACE_bodyBag", "ACE_ItemCore", 7, true),
+        // IV items with variants
+        ("ACE_bloodIV", "ACE_ItemCore", 10, true),
+        ("ACE_bloodIV_500", "ACE_bloodIV", 5, false),
+        ("ACE_bloodIV_250", "ACE_bloodIV", 2, false),
+        ("ACE_plasmaIV", "ACE_ItemCore", 10, true),
+        ("ACE_plasmaIV_500", "ACE_plasmaIV", 5, false),
+        ("ACE_plasmaIV_250", "ACE_plasmaIV", 2, false),
+        ("ACE_salineIV", "ACE_ItemCore", 10, true),
+        ("ACE_salineIV_500", "ACE_salineIV", 5, false),
+        ("ACE_salineIV_250", "ACE_salineIV", 2, false)
+    ];
+
+    for (item_name, parent_class, mass, check_scope) in medical_items {
+        let class = classes.iter()
+            .find(|c| c.name == item_name)
+            .unwrap_or_else(|| panic!("Medical item {} not found", item_name));
+
+        // Check inheritance
+        assert_eq!(class.parent.as_deref(), Some(parent_class), 
+            "Medical item {} should inherit from {}", item_name, parent_class);
+
+        // Check scope only for base items, not variants (which inherit scope)
+        if check_scope {
+            assert!(class.properties.iter().any(|p| p.name == "scope" && matches!(&p.value, CodeValue::Number(n) if *n == 1 || *n == 2)),
+                "Medical item {} should have scope 1 or 2", item_name);
+        }
+
+        // Check common properties
+        assert!(class.properties.iter().any(|p| p.name == "author") || !check_scope, 
+            "Medical item {} should have author", item_name);
+        assert!(class.properties.iter().any(|p| p.name == "displayName"),
+            "Medical item {} should have displayName", item_name);
+        assert!(class.properties.iter().any(|p| p.name == "picture") || !check_scope,
+            "Medical item {} should have picture", item_name);
+        assert!(class.properties.iter().any(|p| p.name == "ACE_isMedicalItem" && matches!(&p.value, CodeValue::Number(n) if *n == 1)) || !check_scope,
+            "Medical item {} should have ACE_isMedicalItem = 1", item_name);
+
+        // Check ItemInfo class
+        let item_info = class.properties.iter()
+            .find(|p| p.name == "ItemInfo")
+            .expect(&format!("ItemInfo class not found for {}", item_name));
+
+        if let CodeValue::Class(info_class) = &item_info.value {
+            assert_eq!(info_class.parent.as_deref(), Some("CBA_MiscItem_ItemInfo"),
+                "ItemInfo for {} should inherit from CBA_MiscItem_ItemInfo", item_name);
+            
+            // Check mass property
+            let mass_prop = info_class.properties.iter()
+                .find(|p| p.name == "mass")
+                .expect(&format!("mass property not found in ItemInfo for {}", item_name));
+            
+            if let CodeValue::Number(actual_mass) = mass_prop.value {
+                assert_eq!(actual_mass, mass as i64,
+                    "Mass for {} should be {}, got {}", item_name, mass, actual_mass);
+            } else {
+                panic!("Mass property for {} is not a number", item_name);
+            }
+        } else {
+            panic!("ItemInfo for {} is not a class", item_name);
+        }
+    }
+
+    // Test IV bag variants specifically
+    let iv_variants = vec![
+        ("ACE_bloodIV", vec!["ACE_bloodIV_500", "ACE_bloodIV_250"]),
+        ("ACE_plasmaIV", vec!["ACE_plasmaIV_500", "ACE_plasmaIV_250"]),
+        ("ACE_salineIV", vec!["ACE_salineIV_500", "ACE_salineIV_250"])
+    ];
+
+    for (base_iv, variants) in iv_variants {
+        let base_class = classes.iter()
+            .find(|c| c.name == base_iv)
+            .unwrap_or_else(|| panic!("Base IV {} not found", base_iv));
+
+        // Check that variants exist and inherit from base
+        for variant in variants {
+            let variant_class = classes.iter()
+                .find(|c| c.name == variant)
+                .unwrap_or_else(|| panic!("IV variant {} not found", variant));
+
+            assert_eq!(variant_class.parent.as_deref(), Some(base_iv),
+                "IV variant {} should inherit from {}", variant, base_iv);
+
+            // Check model and texture properties
+            assert!(variant_class.properties.iter().any(|p| p.name == "model"),
+                "IV variant {} should have model property", variant);
+            assert!(variant_class.properties.iter().any(|p| p.name == "hiddenSelectionsTextures"),
+                "IV variant {} should have hiddenSelectionsTextures", variant);
+        }
+    }
+} 

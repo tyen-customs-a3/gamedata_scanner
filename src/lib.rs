@@ -5,78 +5,151 @@ mod scanner;
 mod utils;
 
 // Re-export everything from the modules
-pub use config::GameDataScannerConfig;
-pub use models::{FileResult, ScanResult};
-pub use error::ScanError;
-pub use scanner::scan_directory;
-pub use utils::{get_derived_classes, get_classes_with_property};
+pub use config::{GameDataScannerConfig, GameDataScannerConfigBuilder};
+pub use models::{FileResult, ScanResult, ClassMap};
+pub use error::{ScanError, ScanResult as ResultType};
+pub use scanner::{scan_directory, filter_classes};
+pub use utils::{get_derived_classes, get_classes_with_property, get_classes_with_property_value};
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
-    use std::fs::File;
-    use std::io::Write;
-    use std::path::Path;
-    
-    fn create_test_file(dir: &Path, filename: &str, content: &str) -> std::path::PathBuf {
-        let file_path = dir.join(filename);
-        let mut file = File::create(&file_path).unwrap();
-        file.write_all(content.as_bytes()).unwrap();
-        file_path
+    use std::collections::HashMap;
+    use parser_code::{CodeClass, CodeProperty, CodeValue};
+
+    fn create_test_class_map() -> ClassMap {
+        let mut class_map = HashMap::new();
+        
+        // Base class
+        let base_vehicle = CodeClass {
+            name: "BaseVehicle".to_string(),
+            parent: None,
+            properties: vec![
+                CodeProperty {
+                    name: "scope".to_string(),
+                    value: CodeValue::Number(2),
+                },
+                CodeProperty {
+                    name: "displayName".to_string(),
+                    value: CodeValue::String("Base Vehicle".to_string()),
+                }
+            ],
+        };
+        
+        // Derived classes
+        let car = CodeClass {
+            name: "Car".to_string(),
+            parent: Some("BaseVehicle".to_string()),
+            properties: vec![
+                CodeProperty {
+                    name: "maxSpeed".to_string(),
+                    value: CodeValue::Number(100),
+                },
+                CodeProperty {
+                    name: "displayName".to_string(),
+                    value: CodeValue::String("Car".to_string()),
+                }
+            ],
+        };
+        
+        let truck = CodeClass {
+            name: "Truck".to_string(),
+            parent: Some("BaseVehicle".to_string()),
+            properties: vec![
+                CodeProperty {
+                    name: "maxSpeed".to_string(),
+                    value: CodeValue::Number(80),
+                },
+                CodeProperty {
+                    name: "cargoCapacity".to_string(),
+                    value: CodeValue::Number(1000),
+                }
+            ],
+        };
+        
+        class_map.insert("BaseVehicle".to_string(), vec![base_vehicle]);
+        class_map.insert("Car".to_string(), vec![car]);
+        class_map.insert("Truck".to_string(), vec![truck]);
+        
+        class_map
+    }
+
+    #[test]
+    fn test_get_derived_classes() {
+        let class_map = create_test_class_map();
+        let scan_result = ScanResult::new("/test");
+        let mut scan_result = ScanResult {
+            class_map,
+            ..scan_result
+        };
+        
+        // Update counts
+        scan_result.files_scanned = 1;
+        scan_result.classes_found = 3;
+        
+        let derived = get_derived_classes(&scan_result, "BaseVehicle");
+        assert_eq!(derived.len(), 2);
+        assert!(derived.contains(&"Car".to_string()));
+        assert!(derived.contains(&"Truck".to_string()));
+        
+        // Test with non-existent base class
+        let derived = get_derived_classes(&scan_result, "NonExistentClass");
+        assert!(derived.is_empty());
+    }
+
+    #[test]
+    fn test_get_classes_with_property() {
+        let class_map = create_test_class_map();
+        let scan_result = ScanResult::new("/test");
+        let mut scan_result = ScanResult {
+            class_map,
+            ..scan_result
+        };
+        
+        // Update counts
+        scan_result.files_scanned = 1;
+        scan_result.classes_found = 3;
+        
+        // Test finding classes with maxSpeed property
+        let with_max_speed = get_classes_with_property(&scan_result, "maxSpeed");
+        assert_eq!(with_max_speed.len(), 2);
+        assert!(with_max_speed.contains(&"Car".to_string()));
+        assert!(with_max_speed.contains(&"Truck".to_string()));
+        
+        // Test finding classes with displayName property
+        let with_display_name = get_classes_with_property(&scan_result, "displayName");
+        assert_eq!(with_display_name.len(), 2);
+        assert!(with_display_name.contains(&"BaseVehicle".to_string()));
+        assert!(with_display_name.contains(&"Car".to_string()));
+        
+        // Test with non-existent property
+        let with_nonexistent = get_classes_with_property(&scan_result, "nonexistentProperty");
+        assert!(with_nonexistent.is_empty());
     }
     
-    #[tokio::test]
-    async fn test_scan_directory() {
-        // Create a temporary directory with test files
-        let temp_dir = TempDir::new().unwrap();
+    #[test]
+    fn test_get_classes_with_property_value() {
+        let class_map = create_test_class_map();
+        let scan_result = ScanResult::new("/test");
+        let mut scan_result = ScanResult {
+            class_map,
+            ..scan_result
+        };
         
-        // Create test files
-        let content1 = r#"
-            class BaseMan {
-                displayName = "Base";
-            };
-            class Rifleman : BaseMan {
-                displayName = "Rifleman";
-            };
-        "#;
+        // Update counts
+        scan_result.files_scanned = 1;
+        scan_result.classes_found = 3;
         
-        let content2 = r#"
-            class Vehicle {
-                displayName = "Vehicle";
-            };
-            class Car : Vehicle {
-                displayName = "Car";
-                maxSpeed = 100;
-            };
-        "#;
+        // Find classes with maxSpeed >= 100
+        let fast_vehicles = get_classes_with_property_value(&scan_result, "maxSpeed", |value| {
+            if let CodeValue::Number(n) = value {
+                *n >= 100
+            } else {
+                false
+            }
+        });
         
-        create_test_file(temp_dir.path(), "test1.hpp", content1);
-        create_test_file(temp_dir.path(), "test2.cpp", content2);
-        
-        // Scan the directory
-        let config = GameDataScannerConfig::default();
-        let result = scan_directory(temp_dir.path(), &config).await.unwrap();
-        
-        // Verify results
-        assert_eq!(result.files_scanned, 2);
-        assert_eq!(result.classes_found, 4);
-        assert_eq!(result.class_map.len(), 4);
-        
-        // Check that we found all classes
-        assert!(result.class_map.contains_key("BaseMan"));
-        assert!(result.class_map.contains_key("Rifleman"));
-        assert!(result.class_map.contains_key("Vehicle"));
-        assert!(result.class_map.contains_key("Car"));
-        
-        // Check inheritance
-        let derived = get_derived_classes(&result, "BaseMan");
-        assert_eq!(derived.len(), 1);
-        assert_eq!(derived[0], "Rifleman");
-        
-        // Check properties
-        let with_max_speed = get_classes_with_property(&result, "maxSpeed");
-        assert_eq!(with_max_speed.len(), 1);
-        assert_eq!(with_max_speed[0], "Car");
+        assert_eq!(fast_vehicles.len(), 1);
+        assert!(fast_vehicles.contains(&"Car".to_string()));
     }
 }

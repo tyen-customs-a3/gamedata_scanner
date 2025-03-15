@@ -1,0 +1,145 @@
+#[cfg(test)]
+mod tests {
+    use parser_code::{CodeParser, CodeValue};
+
+    #[test]
+    fn test_array_properties() {
+        let content = r#"
+            class ACE_Arsenal_Sorts {
+                class sortBase {
+                    tabs[] = {{}, {}};
+                    statement = "";
+                };
+                class ACE_alphabetically: sortBase {
+                    tabs[] = {{0,1,2,3,4,5}, {0,1,2}};
+                };
+            };
+        "#;
+        
+        let parser = CodeParser::new(content).unwrap();
+        let classes = parser.parse_classes();
+        
+        let sort_base = classes.iter().find(|c| c.name == "sortBase").unwrap();
+        assert!(sort_base.properties.iter().any(|p| p.name == "tabs"));
+        
+        let alphabetically = classes.iter().find(|c| c.name == "ACE_alphabetically").unwrap();
+        assert!(alphabetically.properties.iter().any(|p| p.name == "tabs"));
+    }
+
+    #[test]
+    fn test_nested_properties() {
+        let content = r#"
+            class ACE_CSW_Groups {
+                class ace_csw_100Rnd_127x99_mag {
+                    vn_m2_v_100_mag = 1;
+                };
+                class GVAR(tow_missile) {
+                    vn_missile_tow_mag_x1 = 1;
+                };
+            };
+        "#;
+        
+        let parser = CodeParser::new(content).unwrap();
+        let classes = parser.parse_classes();
+        
+        let csw_groups = classes.iter().find(|c| c.name == "ACE_CSW_Groups").unwrap();
+        assert!(csw_groups.properties.iter().any(|p| 
+            matches!(&p.value, CodeValue::Class(c) if c.name == "ace_csw_100Rnd_127x99_mag")
+        ));
+    }
+
+    #[test]
+    fn test_complex_property_values() {
+        let content = r#"
+            class ACE_Triggers {
+                class Command {
+                    isAttachable = 1;
+                    onPlace = QUOTE(_this call FUNC(AddClacker);false);
+                    requires[] = {"ACE_Clacker"};
+                };
+            };
+        "#;
+        
+        let parser = CodeParser::new(content).unwrap();
+        let classes = parser.parse_classes();
+        
+        let command = classes.iter()
+            .find(|c| c.name == "Command")
+            .unwrap();
+            
+        assert!(command.properties.iter().any(|p| p.name == "isAttachable"));
+        assert!(command.properties.iter().any(|p| p.name == "requires"));
+        assert!(command.properties.iter().any(|p| 
+            p.name == "onPlace" && 
+            matches!(&p.value, CodeValue::String(s) if s.contains("QUOTE"))
+        ));
+    }
+
+    #[test]
+    fn test_mixed_property_types() {
+        let content = r#"
+            class PatDown {
+                displayName = CSTRING(Actions_PatDown);
+                category = "advanced";
+                treatmentLocations = 0;
+                allowedSelections[] = {"All"};
+                allowSelfTreatment = 1;
+                medicRequired = 0;
+                treatmentTime = 5;
+                items[] = {};
+                litter[] = {};
+            };
+        "#;
+        
+        let parser = CodeParser::new(content).unwrap();
+        let classes = parser.parse_classes();
+        
+        let patdown = classes.iter().find(|c| c.name == "PatDown").unwrap();
+        
+        // Check for different property types
+        assert!(patdown.properties.iter().any(|p| matches!(&p.value, CodeValue::String(_))));
+        assert!(patdown.properties.iter().any(|p| matches!(&p.value, CodeValue::Number(_))));
+        assert!(patdown.properties.iter().any(|p| matches!(&p.value, CodeValue::Array(_))));
+    }
+
+    #[test]
+    fn test_empty_arrays() {
+        let content = r#"
+            class TestClass {
+                items[] = {};
+                weapons[] = {};
+                magazines[] = {
+                    "mag1",
+                    "mag2"
+                };
+            };
+        "#;
+        
+        let parser = CodeParser::new(content).unwrap();
+        let classes = parser.parse_classes();
+        
+        let test_class = &classes[0];
+        assert!(test_class.properties.iter()
+            .filter(|p| matches!(&p.value, CodeValue::Array(arr) if arr.is_empty()))
+            .count() == 2);
+    }
+
+    #[test]
+    fn test_numeric_properties() {
+        let content = r#"
+            class Settings {
+                movedToSQF = 1;
+                maxTrack = 100;
+                maxTrackPerFrame = 10;
+                spallEnabled = 0;
+            };
+        "#;
+        
+        let parser = CodeParser::new(content).unwrap();
+        let classes = parser.parse_classes();
+        
+        let settings = &classes[0];
+        assert!(settings.properties.iter()
+            .all(|p| matches!(&p.value, CodeValue::Number(_))));
+    }
+} 

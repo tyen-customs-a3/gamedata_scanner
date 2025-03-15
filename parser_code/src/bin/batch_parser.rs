@@ -15,6 +15,7 @@ use hemtt_workspace::WorkspacePath;
 use regex::Regex;
 use pathdiff;
 use rayon::prelude::*;
+use lazy_static::lazy_static;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -62,7 +63,7 @@ struct FileFailure {
 /// Strip ANSI color codes from a string
 fn strip_ansi_codes(input: &str) -> String {
     // This regex matches standard ANSI color and control codes
-    lazy_static::lazy_static! {
+    lazy_static! {
         static ref ANSI_REGEX: Regex = Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap();
     }
     ANSI_REGEX.replace_all(input, "").to_string()
@@ -151,7 +152,7 @@ fn main() -> io::Result<()> {
 
     // Initialize report
     let report = Arc::new(Mutex::new(ParseReport {
-        timestamp: Local::now().to_rfc3939(),
+        timestamp: Local::now().to_rfc3339(),
         total_files: 0,
         successful_files: 0,
         failed_files: 0,

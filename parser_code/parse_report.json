@@ -1,0 +1,244 @@
+{
+  "timestamp": "2025-03-15T17:15:24.648935300+13:00",
+  "total_files": 4239,
+  "successful_files": 4183,
+  "failed_files": 56,
+  "failures": {
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m03.Altis\\setup\\briefing.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m04.Altis\\setup\\scenes.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsgref_c_air_abb2b832\\rhsgref\\addons\\rhsgref_c_air\\AN2\\cfgAN2.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_epa_641584fe\\a3\\missions_f_epa\\Campaign\\Missions\\C_out1.Altis\\initMission.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_epa_641584fe\\a3\\missions_f_epa\\Campaign\\Missions\\C_out2.Altis\\initBriefing.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_epa_641584fe\\a3\\missions_f_epa\\Campaign\\Missions\\C_in2.Altis\\initMission.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhssaf_c_weapons_6ca820a5\\rhssaf\\addons\\rhssaf_c_weapons\\rhssaf_weap_explosives.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_vehiclesounds_69772ad4\\rhsafrf\\addons\\rhs_c_vehiclesounds\\configs\\soft\\Uaz469.hpp": {
+      "error_message": "processor_error: Coded error: PE14",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_c_a2port_air_d6b57453\\rhsusf\\addons\\rhsusf_c_a2port_air\\AH1Z\\cfgAH1Z.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_optics_a0fd0cd2\\rhsafrf\\addons\\rhs_optics\\rsc\\optic_agava.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m01.VR\\setup\\characters.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m02.Altis\\setup\\anims.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_airweapons_23330df4\\rhsafrf\\addons\\rhs_c_airweapons\\rhs_ammo_rockets.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m02.Altis\\setup\\briefing.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m05.Altis\\setup\\comps.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_c_radio_e38e4c93\\rhsusf\\addons\\rhsusf_c_radio\\RP_Commands — kopia.hpp": {
+      "error_message": "WARN: Unknown error",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_c_a2port_air_d6b57453\\rhsusf\\addons\\rhsusf_c_a2port_air\\AH1Z\\cfg_HMD_Helo_Gunship.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\functions_f_mp_mark_f61bcdf5\\a3\\functions_f_mp_mark\\Revive\\defines.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_airweapons_23330df4\\rhsafrf\\addons\\rhs_c_airweapons\\rhs_ammo_bombs.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhssaf_c_weapons_6ca820a5\\rhssaf\\addons\\rhssaf_c_weapons\\rhssaf_weap_rifles.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_c_weapons_4c98ad4a\\rhsusf\\addons\\rhsusf_c_weapons\\rhsusf_weap_AI.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m05.Altis\\setup\\anims.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_troops_933e59f6\\rhsafrf\\addons\\rhs_c_troops\\rhs_zeus_gear.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_optics_a0fd0cd2\\rhsafrf\\addons\\rhs_optics\\rsc\\optic_plissa.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_optics_99e2f52c\\rhsusf\\addons\\rhsusf_optics\\rsc\\cfgM1117.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_optics_a0fd0cd2\\rhsafrf\\addons\\rhs_optics\\rsc\\optic_tpd1k_sosnau.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\cup_trackedvehicles_bmp_1fd616ad\\CUP\\TrackedVehicles\\CUP_TrackedVehicles_BMP\\CfgVehicles.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m03.Altis\\setup\\comps.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhssaf_c_weapons_6ca820a5\\rhssaf\\addons\\rhssaf_c_weapons\\rhssaf_weap_machineguns.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_a2port_air_044b70fa\\rhsusf\\addons\\rhsusf_a2port_air\\data\\proxy\\BIS_AGM_Pod.hpp": {
+      "error_message": "WARN: Unknown error",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_optics_a0fd0cd2\\rhsafrf\\addons\\rhs_optics\\rsc\\optic_sosnau.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_optics_a0fd0cd2\\rhsafrf\\addons\\rhs_optics\\rsc\\optic_essa.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_c_heavyweapons_067828d3\\rhsusf\\addons\\rhsusf_c_heavyweapons\\rhs_weap_mgun.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_vehiclesounds_69772ad4\\rhsafrf\\addons\\rhs_c_vehiclesounds\\configs\\armor\\2S1.hpp": {
+      "error_message": "processor_error: Coded error: PE14",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_heli_b038546a\\a3\\missions_f_heli\\cfgIdentities.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\cup_creatures_people_military_dummyinfantryset_51cb5bbc\\CUP\\Creatures\\People\\Military\\CUP_Creatures_People_Military_DummyInfantrySet\\CUP_A3_Infantry_Define_Definitions.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m01.VR\\setup\\scenes.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_mp_mark_d8a2ed27\\a3\\missions_f_mp_mark\\kb\\MP_Marksmen_01.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhssaf_c_gear_4aa43572\\rhssaf\\addons\\rhssaf_c_gear\\cfgVests.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m03.Altis\\setup\\anims.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_vehiclesounds_69772ad4\\rhsafrf\\addons\\rhs_c_vehiclesounds\\configs\\armor\\T72.hpp": {
+      "error_message": "processor_error: Coded error: PE14",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_airweapons_23330df4\\rhsafrf\\addons\\rhs_c_airweapons\\rhs_mags_bombs.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_c_weapons_4c98ad4a\\rhsusf\\addons\\rhsusf_c_weapons\\rhsusf_weap_old.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m04.Altis\\setup\\comps.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\cba_ui_9d846866\\x\\cba\\addons\\ui\\flexiMenu\\data\\menu_rose.hpp": {
+      "error_message": "processor_error: Coded error: PE9",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_mig29_6b87675a\\rhsafrf\\addons\\rhs_c_mig29\\cfgHMD_Mig29.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_vehiclesounds_69772ad4\\rhsafrf\\addons\\rhs_c_vehiclesounds\\configs\\armor\\T80.hpp": {
+      "error_message": "processor_error: Coded error: PE14",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsgref_c_a2port_armor_17c0f858\\rhsgref\\addons\\RHSgref_c_A2port_armor\\config_brdm.hpp": {
+      "error_message": "WARN: Unknown error",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m01.VR\\setup\\anims.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\functions_f_07def683\\a3\\functions_f\\HoldActions\\defines.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_c_a2port_armor_b1624f20\\rhsusf\\addons\\rhsusf_c_a2port_armor\\CfgVehicles.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\cup_airvehicles_aw159_d25fcb03\\CUP\\AirVehicles\\CUP_AirVehicles_AW159\\Kimi\\cfg_HMD_Lynx_Armed_Metric.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_c_heavyweapons_067828d3\\rhsusf\\addons\\rhsusf_c_heavyweapons\\rhs_mags_missile.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_optics_a0fd0cd2\\rhsafrf\\addons\\rhs_optics\\rsc\\optic_zu23_t3.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhssaf_c_weapons_6ca820a5\\rhssaf\\addons\\rhssaf_c_weapons\\rhssaf_weap_mortars.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_air_a5df9f0e\\rhsafrf\\addons\\rhs_c_air\\t50\\cfgHMD_T50.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhsusf_c_airweapons_3cc90bbe\\rhsusf\\addons\\rhsusf_c_airweapons\\rhs_mags_missile.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\rhs_c_airweapons_23330df4\\rhsafrf\\addons\\rhs_c_airweapons\\rhs_mags_rockets.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    },
+    "D:\\pca\\git\\dep\\rs\\arma3_tool\\cache\\game_data\\missions_f_bootcamp_76b6c7e6\\a3\\missions_f_bootcamp\\Campaign\\Missions\\BOOT_m05.Altis\\setup\\scenes.hpp": {
+      "error_message": "processor_error: Coded error: PE24",
+      "diagnostics": []
+    }
+  }
+}

@@ -254,15 +254,17 @@ impl CodeParser {
                                 .join(", ");
                             
                             // Special handling for different types of macros
-                            let macro_value = if macro_name.starts_with("LIST_") {
+                            let macro_value = if macro_name.starts_with("ARR_") {
+                                // For ARR_ macros, wrap the arguments in curly braces
+                                format!("{{{}}}", args_str)
+                            } else if macro_name.starts_with("LIST_") {
                                 // For LIST_ macros, preserve the exact format
                                 format!("{}({})", macro_name, args_str)
                             } else if macro_name.starts_with("CONCAT_") ||
                                       macro_name.starts_with("QUOTE") ||
                                       macro_name.starts_with("QGVAR") ||
                                       macro_name.starts_with("QQGVAR") ||
-                                      macro_name.starts_with("DOUBLES") ||
-                                      macro_name.starts_with("ARR_") {
+                                      macro_name.starts_with("DOUBLES") {
                                 // Special formatting for common Arma macros
                                 format!("{}({})", macro_name, args_str)
                             } else if !args.is_empty() {
