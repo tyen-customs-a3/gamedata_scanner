@@ -148,13 +148,21 @@ fn test_ace_medical_items() {
         "MedikitItem"
     ];
     
-    for base_class in base_classes {
-        // Skip this test if the base class is not found
-        if let Some(class) = classes.iter().find(|c| c.name == base_class) {
-            // Forward declarations should have no properties
-            assert!(class.properties.is_empty(), "Base class {} should have no properties", base_class);
-        } else {
-            println!("Base class {} not found, skipping test", base_class);
+    let mut missing_base_classes = Vec::new();
+    
+    // Search in the cfgweapon class properties for the base classes
+    for prop in &cfg_weapons.properties {
+        if let CodeValue::Class(class) = &prop.value {
+            if base_classes.contains(&class.name.as_str()) {
+                missing_base_classes.push(class.name.clone());
+            }
+        }
+    }
+    // Print missing base classes
+    if !missing_base_classes.is_empty() {
+        println!("\nMissing base classes:");
+        for class_name in &missing_base_classes {
+            println!("  - {}", class_name);
         }
     }
 
@@ -183,21 +191,28 @@ fn test_ace_medical_items() {
         ("ACE_salineIV_250", "ACE_salineIV", 2, false)
     ];
 
+    let mut missing_medical_items = Vec::new();
+    let mut property_errors = Vec::new();
+
     for (item_name, parent_class, mass, check_scope) in medical_items {
-        // Skip this test if the medical item is not found
+        // Check if the medical item exists
         if let Some(class) = classes.iter().find(|c| c.name == item_name) {
             // Check inheritance
-            assert_eq!(class.parent.as_deref(), Some(parent_class), 
-                "Medical item {} should inherit from {}", item_name, parent_class);
+            if class.parent.as_deref() != Some(parent_class) {
+                property_errors.push(format!("{} should inherit from {} but inherits from {:?}", 
+                    item_name, parent_class, class.parent));
+            }
 
             // Check scope only for base items, not variants (which inherit scope)
             if check_scope {
-                assert!(class.properties.iter().any(|p| p.name == "scope" && matches!(&p.value, CodeValue::Number(n) if *n == 1 || *n == 2)),
-                    "Medical item {} should have scope 1 or 2", item_name);
+                if !class.properties.iter().any(|p| p.name == "scope" && matches!(&p.value, CodeValue::Number(n) if *n == 1 || *n == 2)) {
+                    property_errors.push(format!("{} is missing scope property or it's not 1 or 2", item_name));
+                }
                 
                 // Check ACE_isMedicalItem property only for base items
-                assert!(class.properties.iter().any(|p| p.name == "ACE_isMedicalItem" && matches!(&p.value, CodeValue::Number(n) if *n == 1)),
-                    "Medical item {} should have ACE_isMedicalItem = 1", item_name);
+                if !class.properties.iter().any(|p| p.name == "ACE_isMedicalItem" && matches!(&p.value, CodeValue::Number(n) if *n == 1)) {
+                    property_errors.push(format!("{} is missing ACE_isMedicalItem=1 property", item_name));
+                }
             }
 
             // Check ItemInfo class
@@ -206,16 +221,40 @@ fn test_ace_medical_items() {
             
             if let Some(item_info) = item_info {
                 if let CodeValue::Class(info_class) = &item_info.value {
-                    assert_eq!(info_class.parent.as_deref(), Some("CBA_MiscItem_ItemInfo"), 
-                        "ItemInfo for {} should inherit from CBA_MiscItem_ItemInfo", item_name);
+                    if info_class.parent.as_deref() != Some("CBA_MiscItem_ItemInfo") {
+                        property_errors.push(format!("ItemInfo for {} should inherit from CBA_MiscItem_ItemInfo but inherits from {:?}", 
+                            item_name, info_class.parent));
+                    }
                     
                     // Check mass property
-                    assert!(info_class.properties.iter().any(|p| p.name == "mass" && matches!(&p.value, CodeValue::Number(n) if *n == mass)),
-                        "ItemInfo for {} should have mass = {}", item_name, mass);
+                    if !info_class.properties.iter().any(|p| p.name == "mass" && matches!(&p.value, CodeValue::Number(n) if *n == mass)) {
+                        property_errors.push(format!("ItemInfo for {} should have mass={} but has a different value", 
+                            item_name, mass));
+                    }
+                } else {
+                    property_errors.push(format!("ItemInfo for {} is not a class", item_name));
                 }
+            } else {
+                property_errors.push(format!("{} is missing ItemInfo class", item_name));
             }
         } else {
-            println!("Medical item {} not found, skipping test", item_name);
+            missing_medical_items.push(item_name);
+        }
+    }
+
+    // Print missing medical items
+    if !missing_medical_items.is_empty() {
+        println!("\nMissing medical items ({}):", missing_medical_items.len());
+        for item_name in &missing_medical_items {
+            println!("  - {}", item_name);
+        }
+    }
+
+    // Print property errors
+    if !property_errors.is_empty() {
+        println!("\nProperty errors ({}):", property_errors.len());
+        for error in &property_errors {
+            println!("  - {}", error);
         }
     }
 
@@ -226,25 +265,55 @@ fn test_ace_medical_items() {
         ("ACE_salineIV", vec!["ACE_salineIV_500", "ACE_salineIV_250"])
     ];
 
+    let mut missing_iv_variants = Vec::new();
+    let mut iv_property_errors = Vec::new();
+
     for (base_iv, variants) in iv_variants {
-        let base_class = classes.iter()
-            .find(|c| c.name == base_iv)
-            .unwrap_or_else(|| panic!("Base IV {} not found", base_iv));
+        if let Some(base_class) = classes.iter().find(|c| c.name == base_iv) {
+            // Check that variants exist and inherit from base
+            for variant in variants {
+                if let Some(variant_class) = classes.iter().find(|c| c.name == variant) {
+                    if variant_class.parent.as_deref() != Some(base_iv) {
+                        iv_property_errors.push(format!("IV variant {} should inherit from {} but inherits from {:?}", 
+                            variant, base_iv, variant_class.parent));
+                    }
 
-        // Check that variants exist and inherit from base
-        for variant in variants {
-            let variant_class = classes.iter()
-                .find(|c| c.name == variant)
-                .unwrap_or_else(|| panic!("IV variant {} not found", variant));
-
-            assert_eq!(variant_class.parent.as_deref(), Some(base_iv),
-                "IV variant {} should inherit from {}", variant, base_iv);
-
-            // Check model and texture properties
-            assert!(variant_class.properties.iter().any(|p| p.name == "model"),
-                "IV variant {} should have model property", variant);
-            assert!(variant_class.properties.iter().any(|p| p.name == "hiddenSelectionsTextures"),
-                "IV variant {} should have hiddenSelectionsTextures", variant);
+                    // Check model and texture properties
+                    if !variant_class.properties.iter().any(|p| p.name == "model") {
+                        iv_property_errors.push(format!("IV variant {} is missing model property", variant));
+                    }
+                    if !variant_class.properties.iter().any(|p| p.name == "hiddenSelectionsTextures") {
+                        iv_property_errors.push(format!("IV variant {} is missing hiddenSelectionsTextures property", variant));
+                    }
+                } else {
+                    missing_iv_variants.push(variant);
+                }
+            }
+        } else {
+            missing_iv_variants.push(base_iv);
         }
     }
+
+    // Print missing IV variants
+    if !missing_iv_variants.is_empty() {
+        println!("\nMissing IV variants ({}):", missing_iv_variants.len());
+        for variant in &missing_iv_variants {
+            println!("  - {}", variant);
+        }
+    }
+
+    // Print IV property errors
+    if !iv_property_errors.is_empty() {
+        println!("\nIV property errors ({}):", iv_property_errors.len());
+        for error in &iv_property_errors {
+            println!("  - {}", error);
+        }
+    }
+
+    // Fail the test if any items are missing or have property errors
+    assert!(missing_base_classes.is_empty(), "Missing {} base classes", missing_base_classes.len());
+    assert!(missing_medical_items.is_empty(), "Missing {} medical items", missing_medical_items.len());
+    assert!(property_errors.is_empty(), "Found {} property errors", property_errors.len());
+    assert!(missing_iv_variants.is_empty(), "Missing {} IV variants", missing_iv_variants.len());
+    assert!(iv_property_errors.is_empty(), "Found {} IV property errors", iv_property_errors.len());
 } 
