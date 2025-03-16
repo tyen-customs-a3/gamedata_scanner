@@ -72,35 +72,49 @@ fn find_files(
     directory: &Path, 
     config: &GameDataScannerConfig
 ) -> Result<Vec<PathBuf>> {
-    let files: Vec<PathBuf> = WalkDir::new(directory)
-        .follow_links(config.follow_symlinks)
+    let mut files: Vec<PathBuf> = WalkDir::new(directory)
         .into_iter()
         .filter_map(|entry| {
             match entry {
                 Ok(entry) => {
-                    // Skip directories
-                    if entry.file_type().is_dir() {
+                    // Only process files
+                    if !entry.file_type().is_file() {
                         return None;
                     }
                     
-                    // Check file extension
-                    let path = entry.path();
-                    if let Some(ext) = path.extension() {
+                    // Check if the file has a valid extension
+                    if let Some(ext) = entry.path().extension() {
                         let ext_str = ext.to_string_lossy().to_lowercase();
-                        if config.file_extensions.iter().any(|valid_ext| 
-                            valid_ext.to_lowercase() == ext_str) {
-                            return Some(path.to_path_buf());
+                        if config.file_extensions.iter().any(|valid| valid.to_lowercase() == ext_str) {
+                            debug!("Found file: {}", entry.path().display());
+                            return Some(entry.path().to_path_buf());
                         }
                     }
+                    
                     None
                 },
-                Err(err) => {
-                    warn!("Error accessing entry: {}", err);
+                Err(e) => {
+                    warn!("Error accessing path: {}", e);
                     None
                 }
             }
         })
         .collect();
+    
+    // Sort the files to ensure deterministic results
+    files.sort();
+    
+    // Apply max_files limit if specified in config
+    if let Some(max_files) = config.max_files {
+        if files.len() > max_files {
+            info!("Limiting scan to {} files out of {} found", max_files, files.len());
+            files.truncate(max_files);
+        }
+    }
+    
+    if files.is_empty() {
+        warn!("No files with extensions {:?} found in {}", config.file_extensions, directory.display());
+    }
     
     Ok(files)
 }

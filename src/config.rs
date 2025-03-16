@@ -7,10 +7,8 @@ pub struct GameDataScannerConfig {
     pub file_extensions: Vec<String>,
     /// Maximum number of threads to use for parallel processing
     pub max_threads: usize,
-    /// Whether to follow symbolic links
-    pub follow_symlinks: bool,
-    /// Whether to skip files that have already been processed
-    pub use_cache: bool,
+    /// Maximum number of files to scan (None = no limit)
+    pub max_files: Option<usize>,
 }
 
 impl Default for GameDataScannerConfig {
@@ -18,8 +16,7 @@ impl Default for GameDataScannerConfig {
         Self {
             file_extensions: vec!["cpp".into(), "hpp".into()],
             max_threads: num_cpus::get().max(1), // Ensure at least 1 thread
-            follow_symlinks: false,
-            use_cache: true,
+            max_files: None,
         }
     }
 }
@@ -34,6 +31,13 @@ impl GameDataScannerConfig {
     pub fn with_extensions(extensions: Vec<String>) -> Self {
         let mut config = Self::default();
         config.file_extensions = extensions;
+        config
+    }
+    
+    /// Create a new configuration with a maximum file limit
+    pub fn with_max_files(max_files: usize) -> Self {
+        let mut config = Self::default();
+        config.max_files = Some(max_files);
         config
     }
 }
@@ -53,19 +57,13 @@ impl GameDataScannerConfigBuilder {
     
     /// Set the maximum number of threads to use
     pub fn with_max_threads(mut self, threads: usize) -> Self {
-        self.config.max_threads = threads.max(1); // Ensure at least 1 thread
+        self.config.max_threads = threads;
         self
     }
     
-    /// Set whether to follow symbolic links
-    pub fn follow_symlinks(mut self, follow: bool) -> Self {
-        self.config.follow_symlinks = follow;
-        self
-    }
-    
-    /// Set whether to use caching
-    pub fn use_cache(mut self, use_cache: bool) -> Self {
-        self.config.use_cache = use_cache;
+    /// Set the maximum number of files to scan
+    pub fn with_max_files(mut self, max_files: Option<usize>) -> Self {
+        self.config.max_files = max_files;
         self
     }
     
