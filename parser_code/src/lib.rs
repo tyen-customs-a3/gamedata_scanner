@@ -48,110 +48,110 @@ pub struct CodeParser {
 /// 
 /// * `Result<Vec<CodeClass>, Codes>` - List of classes found in the file or error
 pub fn parse_file(file_path: &std::path::Path) -> Result<Vec<CodeClass>, Codes> {
-    println!("\n==== PARSING FILE: {} ====", file_path.display());
+    debug!("\n==== PARSING FILE: {} ====", file_path.display());
     
     let content = match std::fs::read_to_string(file_path) {
         Ok(content) => {
-            println!("Successfully read file, content length: {} bytes", content.len());
-            println!("File content preview (first 200 chars):\n{}", content.chars().take(200).collect::<String>());
+            debug!("Successfully read file, content length: {} bytes", content.len());
+            debug!("File content preview (first 200 chars):\n{}", content.chars().take(200).collect::<String>());
             content
         },
         Err(e) => {
-            println!("Failed to read file: {}", e);
+            debug!("Failed to read file: {}", e);
             return Err(vec![]);
         }
     };
     
-    println!("Creating parser for file content...");
+    debug!("Creating parser for file content...");
     let parser = match CodeParser::new(&content) {
         Ok(parser) => {
-            println!("Successfully created parser");
+            debug!("Successfully created parser");
             parser
         },
         Err(e) => {
-            println!("Failed to create parser: {:?}", e);
+            debug!("Failed to create parser: {:?}", e);
             return Err(e);
         }
     };
     
-    println!("Parsing classes...");
+    debug!("Parsing classes...");
     let classes = parser.parse_classes();
-    println!("Found {} classes in file", classes.len());
+    debug!("Found {} classes in file", classes.len());
     
     // Print the first few classes for debugging
     if !classes.is_empty() {
-        println!("First 5 classes found:");
+        debug!("First 5 classes found:");
         for (i, class) in classes.iter().take(5).enumerate() {
-            println!("  {}. {} (parent: {:?}, container: {:?})", 
+            debug!("  {}. {} (parent: {:?}, container: {:?})", 
                     i+1, class.name, class.parent, class.container_class);
-            println!("     Properties: {}", class.properties.len());
+            debug!("     Properties: {}", class.properties.len());
         }
     } else {
-        println!("No classes found in the file!");
+        debug!("No classes found in the file!");
     }
     
-    println!("==== PARSING COMPLETE ====\n");
+    debug!("==== PARSING COMPLETE ====\n");
     Ok(classes)
 }
 
 impl CodeParser {
     pub fn new(content: &str) -> Result<Self, Codes> {
-        println!("Initializing CodeParser with content of length: {}", content.len());
+        debug!("Initializing CodeParser with content of length: {}", content.len());
         
         // Create a temporary workspace with the content
         let temp_file = match NamedTempFile::new() {
             Ok(file) => {
-                println!("Created temporary file at: {:?}", file.path());
+                debug!("Created temporary file at: {:?}", file.path());
                 file
             },
             Err(e) => {
-                println!("Failed to create temporary file: {}", e);
+                debug!("Failed to create temporary file: {}", e);
                 return Err(vec![]);
             }
         };
         
         match fs::write(temp_file.path(), content) {
-            Ok(_) => println!("Wrote content to temporary file"),
+            Ok(_) => debug!("Wrote content to temporary file"),
             Err(e) => {
-                println!("Failed to write content to temporary file: {}", e);
+                debug!("Failed to write content to temporary file: {}", e);
                 return Err(vec![]);
             }
         }
         
         let parent_path = PathBuf::from(temp_file.path().parent().unwrap());
-        println!("Using parent path: {:?}", parent_path);
+        debug!("Using parent path: {:?}", parent_path);
         
         let workspace = match Workspace::builder()
             .physical(&parent_path, LayerType::Source)
             .finish(None, false, &hemtt_common::config::PDriveOption::Disallow) {
                 Ok(workspace) => {
-                    println!("Successfully created workspace");
+                    debug!("Successfully created workspace");
                     workspace
                 },
                 Err(e) => {
-                    println!("Failed to create workspace: {}", e);
+                    debug!("Failed to create workspace: {}", e);
                     return Err(vec![]);
                 }
             };
             
         let path = match workspace.join(temp_file.path().file_name().unwrap().to_str().unwrap()) {
             Ok(path) => {
-                println!("Successfully joined workspace path: {:?}", path);
+                debug!("Successfully joined workspace path: {:?}", path);
                 path
             },
             Err(e) => {
-                println!("Failed to join workspace path: {}", e);
+                debug!("Failed to join workspace path: {}", e);
                 return Err(vec![]);
             }
         };
         
         let processed = match Processor::run(&path) {
             Ok(processed) => {
-                println!("Successfully preprocessed content");
+                debug!("Successfully preprocessed content");
                 processed
             },
             Err((_, e)) => {
-                println!("Failed to preprocess content: {}", e);
+                debug!("Failed to preprocess content: {}", e);
                 #[derive(Debug)]
                 struct ProcessorError(hemtt_preprocessor::Error);
                 impl Code for ProcessorError {
@@ -166,16 +166,16 @@ impl CodeParser {
         
         let report = match parse(None, &processed) {
             Ok(report) => {
-                println!("Successfully parsed preprocessed content");
+                debug!("Successfully parsed preprocessed content");
                 report
             },
             Err(e) => {
-                println!("Failed to parse preprocessed content: {:?}", e);
+                debug!("Failed to parse preprocessed content: {:?}", e);
                 return Err(e);
             }
         };
         
-        println!("CodeParser initialization complete");
+        debug!("CodeParser initialization complete");
         Ok(Self {
             config: report.into_config(),
         })
@@ -184,37 +184,37 @@ impl CodeParser {
     /// Parse all classes and return them as a flat list
     pub fn parse_classes(&self) -> Vec<CodeClass> {
         let mut classes = Vec::new();
-        println!("\n=== Starting class parsing ===");
+        debug!("\n=== Starting class parsing ===");
         
         // Print the structure of the config
-        println!("Config structure: {} top-level items", self.config.0.len());
+        debug!("Config structure: {} top-level items", self.config.0.len());
         for (i, item) in self.config.0.iter().enumerate().take(5) {
-            println!("Item {}: {:?}", i, item);
+            debug!("Item {}: {:?}", i, item);
         }
         
         self.extract_classes(&self.config, &mut classes);
-        println!("\n=== Final class list ===");
-        println!("Found {} classes total", classes.len());
+        debug!("\n=== Final class list ===");
+        debug!("Found {} classes total", classes.len());
         for class in &classes {
-            println!("Class: {} (parent: {:?})", class.name, class.parent);
+            debug!("Class: {} (parent: {:?})", class.name, class.parent);
         }
         classes
     }
 
     fn extract_classes(&self, config: &Config, classes: &mut Vec<CodeClass>) {
-        println!("\n=== Starting class extraction ===");
-        println!("Config has {} top-level properties", config.0.len());
+        debug!("\n=== Starting class extraction ===");
+        debug!("Config has {} top-level properties", config.0.len());
         
         // First pass: Process all forward declarations and base classes
-        println!("First pass: Processing forward declarations and base classes");
+        debug!("First pass: Processing forward declarations and base classes");
         for (i, property) in config.0.iter().enumerate() {
-            println!("Processing property {}: {:?}", i, property);
+            debug!("Processing property {}: {:?}", i, property);
             if let Property::Class(class) = property {
                 match class {
                     Class::External { name, .. } => {
-                        println!("Found forward declaration: {}", name.as_str());
+                        debug!("Found forward declaration: {}", name.as_str());
                         if !classes.iter().any(|c| c.name == name.as_str()) {
-                            println!("Adding forward declaration for class: {}", name.as_str());
+                            debug!("Adding forward declaration for class: {}", name.as_str());
                             classes.push(CodeClass {
                                 name: name.as_str().to_string(),
                                 parent: None,
@@ -226,48 +226,48 @@ impl CodeParser {
                     Class::Local { name, parent, properties, .. } => {
                         // Handle base class definitions (classes without inheritance)
                         if parent.is_none() {
-                            println!("Found base class: {}", name.as_str());
+                            debug!("Found base class: {}", name.as_str());
                             let class_def = self.create_class(name.as_str(), None, properties, classes, false);
                             if !classes.iter().any(|c| c.name == name.as_str()) {
-                                println!("Adding base class: {}", name.as_str());
+                                debug!("Adding base class: {}", name.as_str());
                                 classes.push(class_def);
                             }
                         }
                     },
                     Class::Root { properties, .. } => {
-                        println!("Found root class with {} properties", properties.len());
+                        debug!("Found root class with {} properties", properties.len());
                         for (j, prop) in properties.iter().enumerate() {
-                            println!("Root property {}: {:?}", j, prop);
+                            debug!("Root property {}: {:?}", j, prop);
                         }
                     }
                 }
             }
         }
 
-        println!("\n=== Forward declarations and base classes complete, found {} classes ===", classes.len());
+        debug!("\n=== Forward declarations and base classes complete, found {} classes ===", classes.len());
         for class in classes.iter() {
-            println!("Declared class: {}", class.name);
+            debug!("Declared class: {}", class.name);
         }
 
         // Second pass: Process all class definitions with inheritance
-        println!("\n=== Starting full class definitions ===");
+        debug!("\n=== Starting full class definitions ===");
         for (i, property) in config.0.iter().enumerate() {
-            println!("Second pass property {}: {:?}", i, property);
+            debug!("Second pass property {}: {:?}", i, property);
             if let Property::Class(class) = property {
                 match class {
                     Class::Local { name, parent, properties, .. } => {
                         if parent.is_some() {
-                            println!("Processing class definition: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
+                            debug!("Processing class definition: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                             
                             // Create the class with its full definition
                             let class_def = self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, false);
                             
                             // Update or add the class definition
                             if let Some(idx) = classes.iter().position(|c| c.name == name.as_str()) {
-                                println!("Updating existing class: {}", name.as_str());
+                                debug!("Updating existing class: {}", name.as_str());
                                 classes[idx] = class_def;
                             } else {
-                                println!("Adding new class: {}", name.as_str());
+                                debug!("Adding new class: {}", name.as_str());
                                 classes.push(class_def);
                             }
                         }
@@ -276,11 +276,11 @@ impl CodeParser {
                         for prop in properties {
                             if let Property::Class(nested_class) = prop {
                                 if let Class::Local { name: nested_name, parent: nested_parent, properties: nested_props, .. } = nested_class {
-                                    println!("Processing nested class: {} (parent: {:?})", nested_name.as_str(), nested_parent.as_ref().map(|p| p.as_str()));
+                                    debug!("Processing nested class: {} (parent: {:?})", nested_name.as_str(), nested_parent.as_ref().map(|p| p.as_str()));
                                     
                                     // Create hierarchical name for the nested class (parent::child)
                                     let hierarchical_name = format!("{}::{}", name.as_str(), nested_name.as_str());
-                                    println!("Created hierarchical name: {}", hierarchical_name);
+                                    debug!("Created hierarchical name: {}", hierarchical_name);
                                     
                                     // Create and add the nested class with its hierarchical name
                                     let mut nested_def = self.create_class(
@@ -297,10 +297,10 @@ impl CodeParser {
                                     // Update or add the nested class
                                     if let Some(idx) = classes.iter().position(|c| c.name == nested_name.as_str() && 
                                                                                 c.container_class.as_ref() == Some(&name.as_str().to_string())) {
-                                        println!("Updating existing nested class: {}", nested_name.as_str());
+                                        debug!("Updating existing nested class: {}", nested_name.as_str());
                                         classes[idx] = nested_def;
                                     } else {
-                                        println!("Adding new nested class: {}", nested_name.as_str());
+                                        debug!("Adding new nested class: {}", nested_name.as_str());
                                         classes.push(nested_def);
                                     }
                                 }
@@ -308,15 +308,15 @@ impl CodeParser {
                         }
                     },
                     Class::Root { properties, .. } => {
-                        println!("Processing root class with {} properties", properties.len());
+                        debug!("Processing root class with {} properties", properties.len());
                         
                         // For root classes like CfgWeapons, create a container class
                         let mut container_classes = Vec::new();
                         
                         for (j, prop) in properties.iter().enumerate() {
-                            println!("Root property {}: {:?}", j, prop);
+                            debug!("Root property {}: {:?}", j, prop);
                             if let Property::Class(Class::Local { name, parent, properties, .. }) = prop {
-                                println!("Processing root-level class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
+                                debug!("Processing root-level class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                                 
                                 // Create and add the root container class (e.g., CfgWeapons)
                                 let mut container_class = CodeClass {
@@ -338,7 +338,7 @@ impl CodeParser {
                         for container in container_classes {
                             // Add the container class itself
                             if !classes.iter().any(|c| c.name == container.name && c.container_class.is_none()) {
-                                println!("Adding container class: {}", container.name);
+                                debug!("Adding container class: {}", container.name);
                                 classes.push(container);
                             }
                         }
@@ -348,13 +348,13 @@ impl CodeParser {
             }
         }
         
-        println!("\n=== Class extraction complete ===");
-        println!("Total classes found: {}", classes.len());
+        debug!("\n=== Class extraction complete ===");
+        debug!("Total classes found: {}", classes.len());
         for class in classes.iter() {
             if let Some(container) = &class.container_class {
-                println!("Final class: {} (in container: {}, parent: {:?})", class.name, container, class.parent);
+                debug!("Final class: {} (in container: {}, parent: {:?})", class.name, container, class.parent);
             } else {
-                println!("Final class: {} (parent: {:?})", class.name, class.parent);
+                debug!("Final class: {} (parent: {:?})", class.name, class.parent);
             }
         }
     }
