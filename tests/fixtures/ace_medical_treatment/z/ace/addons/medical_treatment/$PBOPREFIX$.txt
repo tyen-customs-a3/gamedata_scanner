@@ -1,7 +1,0 @@
-//<'ace_medical_treatment.pbo' properties via Mikero's dos tools, dll version 9.98>
-prefix=z\ace\addons\medical_treatment;
-hemtt=1.10.2;
-version=3.16.3.79;
-git=4756bb6f8ce63790f358b70f60707d8948a28c83;
-//PboType=Arma Addon;
-//</properties>
