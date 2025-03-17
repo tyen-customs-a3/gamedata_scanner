@@ -239,9 +239,6 @@ impl CodeParser {
                         for (j, prop) in properties.iter().enumerate() {
                             println!("Root property {}: {:?}", j, prop);
                         }
-                    },
-                    _ => {
-                        println!("Found other class type: {:?}", class);
                     }
                 }
             }
@@ -446,13 +443,14 @@ impl CodeParser {
             }
             Value::Array(arr) => {
                 let mut values = Vec::new();
-                for item in arr.items() {
+                for item in &arr.items {
                     match item {
                         Item::Str(s) => values.push(s.value().to_string()),
                         Item::Number(n) => values.push(n.to_string()),
                         // Handle macros using the correct struct pattern
-                        Item::Macro { name, args, .. } => {
-                            let macro_name = name.value();
+                        Item::Macro(macro_expr) => {
+                            let macro_name = macro_expr.name().value();
+                            let args = macro_expr.args();
                             
                             // Enhanced argument handling with better formatting
                             let args_str = args.iter()

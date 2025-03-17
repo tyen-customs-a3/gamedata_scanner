@@ -1,167 +1,246 @@
 use std::path::{Path, PathBuf};
-use std::time::Instant;
-use parser_code::{parse_file, CodeClass};
+use std::fs;
+use std::io;
+use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 use rayon::prelude::*;
-use log::{info, warn, debug, error};
-use walkdir::WalkDir;
+use indicatif::{ProgressBar, ProgressStyle};
+use parser_code::{parse_file, CodeClass};
+use serde::{Deserialize, Serialize};
 
-use crate::config::GameDataScannerConfig;
-use crate::models::{FileResult, ScanResult, ClassMap};
-use crate::error::{ScanError, ScanResult as Result};
-
-/// Scan a directory for game data files and parse them
-///
-/// # Arguments
-///
-/// * `directory` - The directory to scan (Path, not PathBuf for flexibility)
-/// * `config` - Configuration options for the scanner
-///
-/// # Returns
-///
-/// * `Result<ScanResult>` - The scan results or an error
-///
-/// # Errors
-///
-/// Returns `ScanError::NoFilesFound` if no files matching the extensions were found
-/// Returns `ScanError::IoError` if there was an error reading the directory
-pub async fn scan_directory(
-    directory: &Path, 
-    config: &GameDataScannerConfig
-) -> Result<ScanResult> {
-    info!("Starting scan of directory: {}", directory.display());
-    let start_time = Instant::now();
-    
-    // Find all files with the specified extensions using walkdir
-    let files = find_files(directory, config)?;
-    
-    if files.is_empty() {
-        return Err(ScanError::NoFilesFound(directory.to_path_buf()));
-    }
-    
-    info!("Found {} files to scan", files.len());
-    
-    // Process files in parallel using Rayon
-    let file_results: Vec<_> = files
-        .par_iter()
-        .map(|file| scan_file(file))
-        .collect();
-    
-    // Create the ScanResult
-    let mut scan_result = ScanResult::new(directory);
-    scan_result.total_scan_time_ms = start_time.elapsed().as_millis() as u64;
-    
-    // Process the file results
-    for file_result in file_results {
-        scan_result.add_file_result(file_result);
-    }
-    
-    info!("Scan completed in {}ms", scan_result.total_scan_time_ms);
-    info!("Scanned {} files, found {} classes", scan_result.files_scanned, scan_result.classes_found);
-    
-    if scan_result.files_with_errors > 0 {
-        warn!("{} files had errors during scanning", scan_result.files_with_errors);
-    }
-    
-    Ok(scan_result)
+/// Result of scanning a single file, containing the parsed classes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileScanResult {
+    /// Path to the file that was scanned
+    pub file_path: PathBuf,
+    /// Classes found in the file
+    pub classes: Vec<CodeClass>,
 }
 
-/// Find all files with the specified extensions in a directory
-/// 
-/// Uses walkdir for efficient directory traversal
-fn find_files(
-    directory: &Path, 
-    config: &GameDataScannerConfig
-) -> Result<Vec<PathBuf>> {
-    let mut files: Vec<PathBuf> = WalkDir::new(directory)
-        .into_iter()
-        .filter_map(|entry| {
-            match entry {
-                Ok(entry) => {
-                    // Only process files
-                    if !entry.file_type().is_file() {
-                        return None;
-                    }
-                    
-                    // Check if the file has a valid extension
-                    if let Some(ext) = entry.path().extension() {
-                        let ext_str = ext.to_string_lossy().to_lowercase();
-                        if config.file_extensions.iter().any(|valid| valid.to_lowercase() == ext_str) {
-                            debug!("Found file: {}", entry.path().display());
-                            return Some(entry.path().to_path_buf());
-                        }
-                    }
-                    
-                    None
-                },
-                Err(e) => {
-                    warn!("Error accessing path: {}", e);
-                    None
-                }
-            }
-        })
-        .collect();
-    
-    // Sort the files to ensure deterministic results
-    files.sort();
-    
-    // Apply max_files limit if specified in config
-    if let Some(max_files) = config.max_files {
-        if files.len() > max_files {
-            info!("Limiting scan to {} files out of {} found", max_files, files.len());
-            files.truncate(max_files);
+/// Configuration for the scanner
+#[derive(Debug, Clone)]
+pub struct ScannerConfig {
+    /// Maximum number of files to process (for testing)
+    pub max_files: Option<usize>,
+    /// Whether to show progress bar
+    pub show_progress: bool,
+    /// File extensions to scan (lowercase)
+    pub extensions: Vec<String>,
+}
+
+impl Default for ScannerConfig {
+    fn default() -> Self {
+        Self {
+            max_files: None,
+            show_progress: true,
+            extensions: vec!["hpp".to_string(), "cpp".to_string(), "ext".to_string()],
         }
     }
-    
-    if files.is_empty() {
-        warn!("No files with extensions {:?} found in {}", config.file_extensions, directory.display());
-    }
-    
-    Ok(files)
 }
 
-/// Scan a single file and return the results
-fn scan_file(file_path: &Path) -> FileResult {
-    debug!("Scanning file: {}", file_path.display());
-    let start_time = Instant::now();
+/// Result of the scanning process
+#[derive(Debug)]
+pub struct ScannerResult {
+    /// Total number of files processed
+    pub total_files: usize,
+    /// Number of successfully processed files
+    pub successful_files: usize,
+    /// Number of files that failed processing
+    pub failed_files: usize,
+    /// Map of file paths to their scan results
+    pub results: HashMap<PathBuf, FileScanResult>,
+    /// Map of file paths to their error messages
+    pub errors: HashMap<PathBuf, String>,
+}
+
+/// Scans a directory recursively for game data files and processes them in parallel
+pub fn scan_directory(
+    root_dir: impl AsRef<Path>,
+    config: ScannerConfig,
+) -> io::Result<ScannerResult> {
+    let root_dir = root_dir.as_ref();
     
-    let mut result = FileResult::new(file_path);
-    
+    // Verify input directory exists
+    if !root_dir.exists() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Directory not found: {}", root_dir.display()),
+        ));
+    }
+
+    // First, collect all files to process
+    let mut files = Vec::new();
+    collect_files_recursive(root_dir, &mut files, &config)?;
+
+    // Apply max_files limit if specified
+    if let Some(max) = config.max_files {
+        files.truncate(max);
+    }
+
+    // Create shared result containers
+    let results = Arc::new(Mutex::new(HashMap::new()));
+    let errors = Arc::new(Mutex::new(HashMap::new()));
+    let successful_count = Arc::new(Mutex::new(0usize));
+    let failed_count = Arc::new(Mutex::new(0usize));
+
+    // Create progress bar if enabled
+    let progress_bar = if config.show_progress {
+        let pb = ProgressBar::new(files.len() as u64);
+        pb.set_style(ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} ({eta}) {msg}")
+            .unwrap()
+            .progress_chars("##-"));
+        Some(pb)
+    } else {
+        None
+    };
+
+    // Process files in parallel
+    files.par_iter().for_each(|file_path| {
+        match process_file(file_path) {
+            Ok(scan_result) => {
+                results.lock().unwrap().insert(file_path.clone(), scan_result);
+                *successful_count.lock().unwrap() += 1;
+            }
+            Err(e) => {
+                errors.lock().unwrap().insert(file_path.clone(), e.to_string());
+                *failed_count.lock().unwrap() += 1;
+            }
+        }
+        
+        if let Some(pb) = &progress_bar {
+            pb.inc(1);
+        }
+    });
+
+    // Finish progress bar
+    if let Some(pb) = progress_bar {
+        pb.finish_with_message("Scan complete");
+    }
+
+    // Build final result
+    Ok(ScannerResult {
+        total_files: files.len(),
+        successful_files: *successful_count.lock().unwrap(),
+        failed_files: *failed_count.lock().unwrap(),
+        results: Arc::try_unwrap(results).unwrap().into_inner().unwrap(),
+        errors: Arc::try_unwrap(errors).unwrap().into_inner().unwrap(),
+    })
+}
+
+/// Recursively collects files to process
+fn collect_files_recursive(
+    dir: &Path,
+    files: &mut Vec<PathBuf>,
+    config: &ScannerConfig,
+) -> io::Result<()> {
+    if !dir.is_dir() {
+        return Ok(());
+    }
+
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            collect_files_recursive(&path, files, config)?;
+        } else if is_target_file(&path, &config.extensions) {
+            files.push(path);
+        }
+    }
+
+    Ok(())
+}
+
+/// Checks if a file should be processed based on its extension
+fn is_target_file(path: &Path, extensions: &[String]) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| extensions.contains(&ext.to_lowercase()))
+        .unwrap_or(false)
+}
+
+/// Process a single file
+fn process_file(file_path: &Path) -> io::Result<FileScanResult> {
     match parse_file(file_path) {
-        Ok(classes) => {
-            debug!("Found {} classes in {}", classes.len(), file_path.display());
-            result.classes = classes;
-        },
-        Err(errors) => {
-            let error_msg = format!("Failed to parse file: {:?}", errors);
-            error!("{} - {}", file_path.display(), error_msg);
-            result.add_error(error_msg);
-        }
+        Ok(classes) => Ok(FileScanResult {
+            file_path: file_path.to_path_buf(),
+            classes,
+        }),
+        Err(errors) => Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!("Parse errors: {:?}", errors),
+        )),
     }
-    
-    result.scan_time_ms = start_time.elapsed().as_millis() as u64;
-    result
 }
 
-/// Get a filtered class map containing only classes that match a predicate
-pub fn filter_classes<P>(
-    class_map: &ClassMap,
-    predicate: P
-) -> ClassMap
-where
-    P: Fn(&CodeClass) -> bool + Sync + Send
-{
-    class_map.iter()
-        .filter_map(|(name, classes)| {
-            let filtered: Vec<CodeClass> = classes.iter()
-                .filter(|class| predicate(class))
-                .cloned()
-                .collect();
-            
-            if filtered.is_empty() {
-                None
-            } else {
-                Some((name.clone(), filtered))
-            }
-        })
-        .collect()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+    use std::fs::File;
+    use std::io::Write;
+
+    fn create_test_file(dir: &Path, name: &str, content: &str) -> io::Result<PathBuf> {
+        let path = dir.join(name);
+        let mut file = File::create(&path)?;
+        file.write_all(content.as_bytes())?;
+        Ok(path)
+    }
+
+    #[test]
+    fn test_scanner_basic() -> io::Result<()> {
+        let temp_dir = TempDir::new()?;
+        
+        // Create test files
+        create_test_file(temp_dir.path(), "test1.hpp", r#"
+            class TestClass1 {
+                displayName = "Test1";
+            };
+        "#)?;
+        
+        create_test_file(temp_dir.path(), "test2.cpp", r#"
+            class TestClass2 {
+                displayName = "Test2";
+            };
+        "#)?;
+
+        let config = ScannerConfig {
+            show_progress: false,
+            ..Default::default()
+        };
+
+        let result = scan_directory(temp_dir.path(), config)?;
+
+        assert_eq!(result.total_files, 2);
+        assert!(result.successful_files > 0);
+        
+        Ok(())
+    }
+
+    #[test]
+    fn test_scanner_with_max_files() -> io::Result<()> {
+        let temp_dir = TempDir::new()?;
+        
+        // Create multiple test files
+        for i in 0..5 {
+            create_test_file(temp_dir.path(), &format!("test{}.hpp", i), &format!(r#"
+                class TestClass{} {{
+                    displayName = "Test{}";
+                }};
+            "#, i, i))?;
+        }
+
+        let config = ScannerConfig {
+            max_files: Some(3),
+            show_progress: false,
+            ..Default::default()
+        };
+
+        let result = scan_directory(temp_dir.path(), config)?;
+
+        assert_eq!(result.total_files, 3);
+        
+        Ok(())
+    }
 } 

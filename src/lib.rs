@@ -1,155 +1,148 @@
-mod config;
-mod models;
-mod error;
-mod scanner;
-mod utils;
+//! Game Data Scanner Library
+//! 
+//! This library provides functionality for scanning and parsing game data files in parallel.
+//! It can process multiple files simultaneously and extract class definitions and their properties.
+//! 
+//! # Example
+//! ```no_run
+//! use gamedata_scanner::{Scanner, ScannerConfig};
+//! 
+//! // Create a scanner with default configuration
+//! let scanner = Scanner::new(ScannerConfig::default());
+//! 
+//! // Scan a directory
+//! match scanner.scan_directory("path/to/game/data") {
+//!     Ok(result) => {
+//!         println!("Processed {} files", result.total_files);
+//!         println!("Successful: {}", result.successful_files);
+//!         println!("Failed: {}", result.failed_files);
+//!         
+//!         // Process results
+//!         for (path, scan_result) in result.results {
+//!             println!("File: {}", path.display());
+//!             println!("Classes found: {}", scan_result.classes.len());
+//!         }
+//!     },
+//!     Err(e) => eprintln!("Error scanning directory: {}", e),
+//! }
+//! ```
 
-// Re-export everything from the modules
-pub use config::{GameDataScannerConfig, GameDataScannerConfigBuilder};
-pub use models::{FileResult, ScanResult, ClassMap};
-pub use error::{ScanError, ScanResult as ResultType};
-pub use scanner::{scan_directory, filter_classes};
-pub use utils::{get_derived_classes, get_classes_with_property, get_classes_with_property_value};
+use std::path::Path;
+
+mod scanner;
+
+// Re-export main types with documentation
+pub use scanner::ScannerConfig;
+pub use scanner::ScannerResult;
+
+/// Main scanner interface for processing game data files
+#[derive(Debug, Clone)]
+pub struct Scanner {
+    config: ScannerConfig,
+}
+
+impl Scanner {
+    /// Creates a new scanner with the specified configuration
+    pub fn new(config: ScannerConfig) -> Self {
+        Self { config }
+    }
+
+    /// Creates a new scanner with default configuration
+    pub fn default() -> Self {
+        Self::new(ScannerConfig::default())
+    }
+
+    /// Scans a directory recursively for game data files
+    /// 
+    /// # Arguments
+    /// 
+    /// * `path` - Path to the directory to scan
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a `Result` containing either a `ScannerResult` with the scan results
+    /// or an IO error if the scanning process failed.
+    /// 
+    /// # Example
+    /// 
+    /// ```no_run
+    /// use gamedata_scanner::Scanner;
+    /// 
+    /// let scanner = Scanner::default();
+    /// let results = scanner.scan_directory("path/to/data").unwrap();
+    /// println!("Found {} classes", results.results.values()
+    ///     .map(|r| r.classes.len())
+    ///     .sum::<usize>());
+    /// ```
+    pub fn scan_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<ScannerResult> {
+        scanner::scan_directory(path, self.config.clone())
+    }
+
+    /// Gets a reference to the scanner's configuration
+    pub fn config(&self) -> &ScannerConfig {
+        &self.config
+    }
+
+    /// Gets a mutable reference to the scanner's configuration
+    pub fn config_mut(&mut self) -> &mut ScannerConfig {
+        &mut self.config
+    }
+}
+
+impl Default for Scanner {
+    fn default() -> Self {
+        Self::new(ScannerConfig::default())
+    }
+}
+
+/// Convenience function to scan a directory with default configuration
+pub fn scan_directory<P: AsRef<Path>>(path: P) -> std::io::Result<ScannerResult> {
+    Scanner::default().scan_directory(path)
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use parser_code::{CodeClass, CodeProperty, CodeValue};
+    use tempfile::TempDir;
+    use std::fs::File;
+    use std::io::{self, Write};
+    use std::path::PathBuf;
 
-    fn create_test_class_map() -> ClassMap {
-        let mut class_map = HashMap::new();
-        
-        // Base class
-        let base_vehicle = CodeClass {
-            name: "BaseVehicle".to_string(),
-            parent: None,
-            properties: vec![
-                CodeProperty {
-                    name: "scope".to_string(),
-                    value: CodeValue::Number(2),
-                },
-                CodeProperty {
-                    name: "displayName".to_string(),
-                    value: CodeValue::String("Base Vehicle".to_string()),
-                }
-            ],
-        };
-        
-        // Derived classes
-        let car = CodeClass {
-            name: "Car".to_string(),
-            parent: Some("BaseVehicle".to_string()),
-            properties: vec![
-                CodeProperty {
-                    name: "maxSpeed".to_string(),
-                    value: CodeValue::Number(100),
-                },
-                CodeProperty {
-                    name: "displayName".to_string(),
-                    value: CodeValue::String("Car".to_string()),
-                }
-            ],
-        };
-        
-        let truck = CodeClass {
-            name: "Truck".to_string(),
-            parent: Some("BaseVehicle".to_string()),
-            properties: vec![
-                CodeProperty {
-                    name: "maxSpeed".to_string(),
-                    value: CodeValue::Number(80),
-                },
-                CodeProperty {
-                    name: "cargoCapacity".to_string(),
-                    value: CodeValue::Number(1000),
-                }
-            ],
-        };
-        
-        class_map.insert("BaseVehicle".to_string(), vec![base_vehicle]);
-        class_map.insert("Car".to_string(), vec![car]);
-        class_map.insert("Truck".to_string(), vec![truck]);
-        
-        class_map
+    fn create_test_file(dir: &Path, name: &str, content: &str) -> io::Result<PathBuf> {
+        let path = dir.join(name);
+        let mut file = File::create(&path)?;
+        file.write_all(content.as_bytes())?;
+        Ok(path)
     }
 
     #[test]
-    fn test_get_derived_classes() {
-        let class_map = create_test_class_map();
-        let scan_result = ScanResult::new("/test");
-        let mut scan_result = ScanResult {
-            class_map,
-            ..scan_result
-        };
+    fn test_scanner_api() -> io::Result<()> {
+        let temp_dir = TempDir::new()?;
         
-        // Update counts
-        scan_result.files_scanned = 1;
-        scan_result.classes_found = 3;
-        
-        let derived = get_derived_classes(&scan_result, "BaseVehicle");
-        assert_eq!(derived.len(), 2);
-        assert!(derived.contains(&"Car".to_string()));
-        assert!(derived.contains(&"Truck".to_string()));
-        
-        // Test with non-existent base class
-        let derived = get_derived_classes(&scan_result, "NonExistentClass");
-        assert!(derived.is_empty());
-    }
+        // Create test files
+        create_test_file(&temp_dir.path(), "test1.hpp", r#"
+            class TestClass1 {
+                displayName = "Test1";
+            };
+        "#)?;
 
-    #[test]
-    fn test_get_classes_with_property() {
-        let class_map = create_test_class_map();
-        let scan_result = ScanResult::new("/test");
-        let mut scan_result = ScanResult {
-            class_map,
-            ..scan_result
-        };
-        
-        // Update counts
-        scan_result.files_scanned = 1;
-        scan_result.classes_found = 3;
-        
-        // Test finding classes with maxSpeed property
-        let with_max_speed = get_classes_with_property(&scan_result, "maxSpeed");
-        assert_eq!(with_max_speed.len(), 2);
-        assert!(with_max_speed.contains(&"Car".to_string()));
-        assert!(with_max_speed.contains(&"Truck".to_string()));
-        
-        // Test finding classes with displayName property
-        let with_display_name = get_classes_with_property(&scan_result, "displayName");
-        assert_eq!(with_display_name.len(), 2);
-        assert!(with_display_name.contains(&"BaseVehicle".to_string()));
-        assert!(with_display_name.contains(&"Car".to_string()));
-        
-        // Test with non-existent property
-        let with_nonexistent = get_classes_with_property(&scan_result, "nonexistentProperty");
-        assert!(with_nonexistent.is_empty());
-    }
-    
-    #[test]
-    fn test_get_classes_with_property_value() {
-        let class_map = create_test_class_map();
-        let scan_result = ScanResult::new("/test");
-        let mut scan_result = ScanResult {
-            class_map,
-            ..scan_result
-        };
-        
-        // Update counts
-        scan_result.files_scanned = 1;
-        scan_result.classes_found = 3;
-        
-        // Find classes with maxSpeed >= 100
-        let fast_vehicles = get_classes_with_property_value(&scan_result, "maxSpeed", |value| {
-            if let CodeValue::Number(n) = value {
-                *n >= 100
-            } else {
-                false
-            }
-        });
-        
-        assert_eq!(fast_vehicles.len(), 1);
-        assert!(fast_vehicles.contains(&"Car".to_string()));
+        // Test default scanner
+        let scanner = Scanner::default();
+        let result = scanner.scan_directory(temp_dir.path())?;
+        assert_eq!(result.total_files, 1);
+        assert_eq!(result.successful_files, 1);
+
+        // Test custom configuration
+        let mut config = ScannerConfig::default();
+        config.show_progress = false;
+        let scanner = Scanner::new(config);
+        let result = scanner.scan_directory(temp_dir.path())?;
+        assert_eq!(result.total_files, 1);
+
+        // Test convenience function
+        let result = scan_directory(temp_dir.path())?;
+        assert_eq!(result.total_files, 1);
+
+        Ok(())
     }
 }
