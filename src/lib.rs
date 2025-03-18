@@ -135,10 +135,18 @@ mod tests {
         // Test custom configuration
         let mut config = ScannerConfig::default();
         config.show_progress = false;
+        config.timeout = 60; // Custom timeout
         let scanner = Scanner::new(config);
         let result = scanner.scan_directory(temp_dir.path())?;
         assert_eq!(result.total_files, 1);
 
+        // Test timeout configuration
+        let mut config = ScannerConfig::default();
+        config.timeout = 15; // Different timeout
+        let scanner = Scanner::new(config);
+        let result = scanner.scan_directory(temp_dir.path())?;
+        assert_eq!(result.total_files, 1);
+        
         // Test convenience function
         let result = scan_directory(temp_dir.path())?;
         assert_eq!(result.total_files, 1);
