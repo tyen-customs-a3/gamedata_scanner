@@ -17,16 +17,19 @@ hemtt-preprocessor = { workspace = true }
 hemtt-common = { workspace = true }
 chumsky = "0.9.3"
 serde = { version = "1.0.219", features = ["derive"] }
-tempfile = "3.18.0"
+tempfile = "3.19.0"
 log = "0.4.26"
-env_logger = "0.10.0"
-clap = { version = "4.4.18", features = ["derive"] }
-serde_json = "1.0.113"
-chrono = "0.4.34"
-regex = "1.10.3"
-lazy_static = "1.4.0"
-pathdiff = "0.2.1"
-rayon = "1.8.0"
+env_logger = "0.11.7"
+clap = { version = "4.5.32", features = ["derive"] }
+serde_json = "1.0.140"
+chrono = "0.4.40"
+regex = "1.11.1"
+lazy_static = "1.5.0"
+pathdiff = "0.2.3"
+rayon = "1.10.0"
+simple_logger = "5.0.0"
+codespan-reporting = "0.11.1"
+indicatif = "0.17.11"
 
 [lints.rust]
 dead_code = "allow"

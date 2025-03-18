@@ -12,6 +12,8 @@ use log::{debug, trace};
 mod parser;
 pub use parser::*;
 
+pub mod batch_parser;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodeClass {
     pub name: String,
