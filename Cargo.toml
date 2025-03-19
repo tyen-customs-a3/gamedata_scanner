@@ -1,7 +1,7 @@
 [package]
 name = "gamedata_scanner"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 # Include test fixtures in the package
 include = [
@@ -10,30 +10,39 @@ include = [
     "Cargo.toml",
 ]
 
+[workspace]
+members = [
+    "parser_advanced",
+    "parser_simple",
+    "models",
+    "tool"
+]
+
 [workspace.dependencies]
-hemtt-sqf = { path = "../HEMTT/libs/sqf" }
+hemtt-config = { path = "../HEMTT/libs/config" }
 hemtt-workspace = { path = "../HEMTT/libs/workspace" }
 hemtt-preprocessor = { path = "../HEMTT/libs/preprocessor" }
 hemtt-common = { path = "../HEMTT/libs/common" }
-hemtt-config = { path = "../HEMTT/libs/config" }
-# hemtt-sqf = { git = "https://github.com/tyen-customs-a3/HEMTT.git", rev = "b74d694" }
+# hemtt-config = { git = "https://github.com/tyen-customs-a3/HEMTT.git", rev = "b74d694" }
 # hemtt-workspace = { git = "https://github.com/tyen-customs-a3/HEMTT.git", rev = "b74d694" }
 # hemtt-preprocessor = { git = "https://github.com/tyen-customs-a3/HEMTT.git", rev = "b74d694" }
 # hemtt-common = { git = "https://github.com/tyen-customs-a3/HEMTT.git", rev = "b74d694" }
-# hemtt-config = { git = "https://github.com/tyen-customs-a3/HEMTT.git", rev = "b74d694" }
 
 [dependencies]
-parser_code = { path = "parser_code" }
-thiserror = "2.0.12"
-log = "0.4.26"
+parser_advanced = { path = "./parser_advanced" }
+parser_simple = { path = "./parser_simple" }
+models = { path = "./models" }
 rayon = "1.10.0"
 serde = { version = "1.0.219", features = ["derive"] }
-tokio = { version = "1.44.1", features = ["full"] }
+tempfile = "3.19.0"
+indicatif = "0.17.11"
+clap = { version = "4.5.32", features = ["derive"] }
+log = "0.4.26"
+env_logger = "0.11.7"
 num_cpus = "1.16.0"
 walkdir = "2.5.0"
 chrono = { version = "0.4.40", features = ["serde"] }
 serde_json = "1.0.140"
-indicatif = { version = "0.17.0", features = ["rayon"] }
 dashmap = "6.1.0"
 
 [dev-dependencies]

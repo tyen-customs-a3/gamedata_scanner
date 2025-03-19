@@ -1,8 +1,5 @@
-use chumsky::prelude::*;
 use hemtt_config::{Config, Property, Class};
-use hemtt_workspace::reporting::Processed;
-use std::collections::{HashMap, HashSet};
-use super::{CodeClass, CodeProperty};
+use std::collections::HashSet;
 
 /// Helper functions for parsing and traversing class hierarchies
 pub trait ClassHierarchyParser {

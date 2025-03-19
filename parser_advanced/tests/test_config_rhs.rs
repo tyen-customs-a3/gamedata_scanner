@@ -1,11 +1,13 @@
-use parser_code::{CodeParser, CodeValue};
+use parser_advanced::CodeParser;
 use std::fs;
+use std::path::Path;
 
 #[test]
 fn test_config_rhs() {
     let content = fs::read_to_string("tests/fixtures/rhs_cfg.hpp").unwrap();
     let parser = CodeParser::new(&content).unwrap();
-    let classes = parser.parse_classes();
+    let file_path = Path::new("tests/fixtures/rhs_cfg.hpp");
+    let classes = parser.parse_classes(file_path);
 
     // RHS classes to check for existence
     let rhs_classes = vec![

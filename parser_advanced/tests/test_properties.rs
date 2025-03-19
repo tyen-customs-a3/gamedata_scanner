@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use parser_code::{CodeParser, CodeValue};
+    use parser_advanced::CodeParser;
+    use models::PropertyValue;
+    use std::path::Path;
 
     #[test]
     fn test_array_properties() {
@@ -17,7 +19,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_array_properties.hpp");
+        let classes = parser.parse_classes(file_path);
         
         let sort_base = classes.iter().find(|c| c.name == "sortBase").unwrap();
         assert!(sort_base.properties.iter().any(|p| p.name == "tabs"));
@@ -40,7 +43,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_nested_properties.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // Skip this test if no classes were found
         if classes.is_empty() {
@@ -52,7 +56,7 @@ mod tests {
         if let Some(csw_groups) = classes.iter().find(|c| c.name == "ACE_CSW_Groups") {
             // Skip this assertion if the property is not found
             if !csw_groups.properties.iter().any(|p| 
-                matches!(&p.value, CodeValue::Class(c) if c.name == "ace_csw_100Rnd_127x99_mag")
+                matches!(&p.value, PropertyValue::Class(c) if c.name == "ace_csw_100Rnd_127x99_mag")
             ) {
                 println!("Property ace_csw_100Rnd_127x99_mag not found, skipping test");
             }
@@ -74,7 +78,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_complex_properties.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // Skip this test if no classes were found
         if classes.is_empty() {
@@ -95,7 +100,7 @@ mod tests {
             
             if !command.properties.iter().any(|p| 
                 p.name == "onPlace" && 
-                matches!(&p.value, CodeValue::String(s) if s.contains("QUOTE"))
+                matches!(&p.value, PropertyValue::String(s) if s.contains("QUOTE"))
             ) {
                 println!("Property onPlace with QUOTE not found, skipping test");
             }
@@ -121,7 +126,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_mixed_property_types.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // Skip this test if no classes were found
         if classes.is_empty() {
@@ -132,7 +138,7 @@ mod tests {
         // Find the PatDown class
         if let Some(patdown) = classes.iter().find(|c| c.name == "PatDown") {
             // Check for different property types
-            if !patdown.properties.iter().any(|p| matches!(&p.value, CodeValue::String(_))) {
+            if !patdown.properties.iter().any(|p| matches!(&p.value, PropertyValue::String(_))) {
                 println!("No string properties found, skipping test");
             }
         } else {
@@ -154,11 +160,12 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_empty_arrays.hpp");
+        let classes = parser.parse_classes(file_path);
         
         let test_class = &classes[0];
         assert!(test_class.properties.iter()
-            .filter(|p| matches!(&p.value, CodeValue::Array(arr) if arr.is_empty()))
+            .filter(|p| matches!(&p.value, PropertyValue::Array(arr) if arr.is_empty()))
             .count() == 2);
     }
 
@@ -174,10 +181,11 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_numeric_properties.hpp");
+        let classes = parser.parse_classes(file_path);
         
         let settings = &classes[0];
         assert!(settings.properties.iter()
-            .all(|p| matches!(&p.value, CodeValue::Number(_))));
+            .all(|p| matches!(&p.value, PropertyValue::Number(_))));
     }
 } 

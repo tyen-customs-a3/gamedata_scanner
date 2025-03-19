@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use parser_code::{CodeParser, CodeValue};
+    use parser_advanced::CodeParser;
+    use models::PropertyValue;
+    use std::path::Path;
 
     #[test]
     fn test_gvar_macro() {
@@ -19,7 +21,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_gvar_macro.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // Skip this test if no classes were found
         if classes.is_empty() {
@@ -48,7 +51,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_egvar_macro.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // Skip this test if no classes were found
         if classes.is_empty() {
@@ -80,7 +84,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_cstring_macro.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // Skip this test if no classes were found
         if classes.is_empty() {
@@ -93,7 +98,7 @@ mod tests {
             // Skip this assertion if the property is not found
             if !settings.properties.iter().any(|p| 
                 p.name == "displayName" && 
-                matches!(&p.value, CodeValue::String(s) if s == "Sort by Weight")
+                matches!(&p.value, PropertyValue::String(s) if s == "Sort by Weight")
             ) {
                 println!("Property displayName with value 'Sort by Weight' not found, skipping test");
             }
@@ -101,7 +106,7 @@ mod tests {
             // Skip this assertion if the property is not found
             if !settings.properties.iter().any(|p| 
                 p.name == "description" && 
-                matches!(&p.value, CodeValue::String(s) if s == "Dragon")
+                matches!(&p.value, PropertyValue::String(s) if s == "Dragon")
             ) {
                 println!("Property description with value 'Dragon' not found, skipping test");
             }
@@ -125,7 +130,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_quote_macro.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // Skip this test if no classes were found
         if classes.is_empty() {
@@ -138,7 +144,7 @@ mod tests {
             // Skip this assertion if the property is not found
             if !triggers.properties.iter().any(|p| 
                 p.name == "condition" && 
-                matches!(&p.value, CodeValue::String(s) if s == "true")
+                matches!(&p.value, PropertyValue::String(s) if s == "true")
             ) {
                 println!("Property condition with value 'true' not found, skipping test");
             }
@@ -146,7 +152,7 @@ mod tests {
             // Skip this assertion if the property is not found
             if !triggers.properties.iter().any(|p| 
                 p.name == "onPlace" && 
-                matches!(&p.value, CodeValue::String(s) if s == "_this call ace_fnc_AddClacker;false")
+                matches!(&p.value, PropertyValue::String(s) if s == "_this call ace_fnc_AddClacker;false")
             ) {
                 println!("Property onPlace with value '_this call ace_fnc_AddClacker;false' not found, skipping test");
             }
@@ -172,7 +178,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_qfunc_macro.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // Skip this test if no classes were found
         if classes.is_empty() {
@@ -184,7 +191,7 @@ mod tests {
         if let Some(patdown) = classes.iter().find(|c| c.name == "PatDown") {
             // Skip this assertion if the properties are not found
             if !patdown.properties.iter().all(|p| 
-                matches!(&p.value, CodeValue::String(s) if 
+                matches!(&p.value, PropertyValue::String(s) if 
                     s == "ace_fnc_medical_canPatDown" ||
                     s == "ace_fnc_medical_success" ||
                     s == "ace_fnc_medical_progress"
@@ -213,7 +220,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_qpathtof_macro.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // Skip this test if no classes were found
         if classes.is_empty() {
@@ -226,7 +234,7 @@ mod tests {
             // Skip this assertion if the property is not found
             if !command.properties.iter().any(|p| 
                 p.name == "picture" && 
-                matches!(&p.value, CodeValue::String(s) if s == "ace\\Data\\UI\\Clacker.paa")
+                matches!(&p.value, PropertyValue::String(s) if s == "ace\\Data\\UI\\Clacker.paa")
             ) {
                 println!("Property picture with value 'ace\\Data\\UI\\Clacker.paa' not found, skipping test");
             }

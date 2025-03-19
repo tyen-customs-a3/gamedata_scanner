@@ -1,16 +1,13 @@
 [package]
-name = "parser_code"
+name = "parser_advanced"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [lib]
 path = "src/lib.rs"
 
-[[bin]]
-name = "batch_parser"
-path = "src/bin/batch_parser.rs"
-
 [dependencies]
+models = { path = "../models" }
 hemtt-config = { workspace = true }
 hemtt-workspace = { workspace = true }
 hemtt-preprocessor = { workspace = true }
@@ -30,9 +27,10 @@ rayon = "1.10.0"
 simple_logger = "5.0.0"
 codespan-reporting = "0.11.1"
 indicatif = "0.17.11"
+walkdir = "2.5.0"
 
 [lints.rust]
-dead_code = "allow"
-unused_variables = "allow"
-unused_imports = "allow"
-unused_assignments = "allow"
+# dead_code = "allow"
+# unused_variables = "allow"
+# unused_imports = "allow"
+# unused_assignments = "allow"

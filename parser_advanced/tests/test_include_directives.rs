@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use parser_code::{CodeParser, CodeValue};
+    use parser_advanced::CodeParser;
+    use std::path::Path;
 
     #[test]
     fn test_basic_includes() {
@@ -22,7 +23,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_basic_includes.hpp");
+        let classes = parser.parse_classes(file_path);
         
         assert!(classes.iter().any(|c| c.name == "CfgPatches"));
     }
@@ -45,7 +47,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_multiline_macros.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // This test mainly checks that the parser doesn't crash
         assert!(classes.len() > 0);
@@ -72,7 +75,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_function_macros.hpp");
+        let classes = parser.parse_classes(file_path);
         
         assert_eq!(classes.len(), 1);
         assert_eq!(classes[0].name, "Action");
@@ -112,7 +116,8 @@ mod tests {
         "#;
         
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let file_path = Path::new("tests/fixtures/test_nested_includes.hpp");
+        let classes = parser.parse_classes(file_path);
         
         // This test mainly ensures the parser doesn't crash
         assert!(classes.len() > 0);

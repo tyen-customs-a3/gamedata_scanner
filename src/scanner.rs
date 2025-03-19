@@ -6,7 +6,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use indicatif::{ProgressBar, ProgressStyle};
-use parser_code::{parse_file, CodeClass};
+use parser_advanced::parse_file;
+use models::GameClass;
 use serde::{Deserialize, Serialize};
 use std::thread;
 use std::sync::mpsc::{self, RecvTimeoutError};
@@ -17,7 +18,7 @@ pub struct FileScanResult {
     /// Path to the file that was scanned
     pub file_path: PathBuf,
     /// Classes found in the file
-    pub classes: Vec<CodeClass>,
+    pub classes: Vec<GameClass>,
     /// Time taken to parse the file in milliseconds (only set if diagnostic mode is enabled)
     pub parse_time_ms: Option<u64>,
 }
@@ -237,10 +238,14 @@ pub fn scan_directory(
     let results_map = Arc::try_unwrap(results).unwrap().into_inner().unwrap();
     let errors_map = Arc::try_unwrap(errors).unwrap().into_inner().unwrap();
     
+    // Get the counts before creating the result
+    let successful = *successful_count.lock().unwrap();
+    let failed = *failed_count.lock().unwrap();
+    
     Ok(ScannerResult {
         total_files: files.len(),
-        successful_files: *successful_count.lock().unwrap(),
-        failed_files: *failed_count.lock().unwrap(),
+        successful_files: successful,
+        failed_files: failed,
         results: results_map,
         errors: errors_map,
         diagnostics,

@@ -29,11 +29,17 @@
 
 use std::path::Path;
 
-mod scanner;
-
-// Re-export main types with documentation
+// Re-export models from models
+pub use models::{
+    GameClass, ClassProperty, PropertyValue, Scanner as ClassScanner, 
+    ScanResult, FileParser
+};
+pub use scanner_factory::{get_scanner, get_parser};
 pub use scanner::ScannerConfig;
 pub use scanner::ScannerResult;
+
+pub mod scanner_factory;
+pub mod scanner;
 
 /// Main scanner interface for processing game data files
 #[derive(Debug, Clone)]

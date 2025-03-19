@@ -1,39 +1,89 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::fs;
-use std::path::PathBuf;
-use std::collections::HashMap;
-use hemtt_config::{Config, parse, Property, Class, Value, Array, Item};
+use std::path::{PathBuf, Path};
+use hemtt_config::{Config, parse, Property, Class, Value, Item};
 use hemtt_preprocessor::Processor;
-use hemtt_workspace::{reporting::{Codes, Processed, Code, Diagnostic, Severity}, LayerType, Workspace, WorkspacePath};
-use serde::{Serialize, Deserialize};
+use hemtt_workspace::{reporting::{Codes, Code, Diagnostic, Severity}, LayerType, Workspace};
 use tempfile::NamedTempFile;
 use log::{debug, trace};
+use models::{GameClass, ClassProperty, PropertyValue, ScanResult, FileParser};
+use walkdir::WalkDir;
 
 mod parser;
 pub use parser::*;
 
-pub mod batch_parser;
+// Re-export the scanner module
+pub mod scanner;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CodeClass {
-    pub name: String,
-    pub parent: Option<String>,
-    pub properties: Vec<CodeProperty>,
-    pub container_class: Option<String>,
+/// AdvancedFileParser implements the FileParser trait for the advanced parser
+pub struct AdvancedFileParser {}
+
+impl AdvancedFileParser {
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CodeProperty {
-    pub name: String,
-    pub value: CodeValue,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CodeValue {
-    String(String),
-    Array(Vec<String>),
-    Number(i64),
-    Class(CodeClass),
+impl FileParser for AdvancedFileParser {
+    fn parse_file(&self, file_path: &Path) -> Vec<GameClass> {
+        match parse_file(file_path) {
+            Ok(classes) => classes,
+            Err(_) => Vec::new(),
+        }
+    }
+    
+    fn parse_directory(&self, dir_path: &Path) -> ScanResult {
+        // Implementation to parse a directory
+        let mut result = ScanResult::new();
+        
+        if !dir_path.exists() || !dir_path.is_dir() {
+            debug!("Directory does not exist or is not a directory: {}", dir_path.display());
+            return result;
+        }
+        
+        let mut files_scanned = 0;
+        let mut files_with_errors = 0;
+        let mut classes = Vec::new();
+        
+        // Walk the directory recursively
+        let walker = WalkDir::new(dir_path)
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok());
+            
+        for entry in walker {
+            let path = entry.path();
+            
+            // Only process files with certain extensions
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    if ext == "hpp" || ext == "cpp" || ext == "h" || ext == "c" {
+                        files_scanned += 1;
+                        match parse_file(path) {
+                            Ok(file_classes) => {
+                                classes.extend(file_classes);
+                            },
+                            Err(_) => {
+                                files_with_errors += 1;
+                                debug!("Error parsing file: {}", path.display());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        result.files_scanned = files_scanned;
+        result.files_with_errors = files_with_errors;
+        result.classes_found = classes.len();
+        result.add_classes(classes);
+        
+        result
+    }
+    
+    fn name(&self) -> &str {
+        "AdvancedFileParser"
+    }
 }
 
 pub struct CodeParser {
@@ -48,9 +98,9 @@ pub struct CodeParser {
 /// 
 /// # Returns
 /// 
-/// * `Result<Vec<CodeClass>, Codes>` - List of classes found in the file or error
-pub fn parse_file(file_path: &std::path::Path) -> Result<Vec<CodeClass>, Codes> {
-    debug!("\n==== PARSING FILE: {} ====", file_path.display());
+/// * `Result<Vec<GameClass>, Codes>` - List of classes found in the file or error
+pub fn parse_file(file_path: &std::path::Path) -> Result<Vec<GameClass>, Codes> {
+    debug!("\n==== PARSING FILE WITH ADVANCED PARSER: {} ====", file_path.display());
     
     let content = match std::fs::read_to_string(file_path) {
         Ok(content) => {
@@ -77,7 +127,7 @@ pub fn parse_file(file_path: &std::path::Path) -> Result<Vec<CodeClass>, Codes> 
     };
     
     debug!("Parsing classes...");
-    let classes = parser.parse_classes();
+    let classes = parser.parse_classes(file_path);
     debug!("Found {} classes in file", classes.len());
     
     // Print the first few classes for debugging
@@ -92,7 +142,7 @@ pub fn parse_file(file_path: &std::path::Path) -> Result<Vec<CodeClass>, Codes> 
         debug!("No classes found in the file!");
     }
     
-    debug!("==== PARSING COMPLETE ====\n");
+    debug!("==== ADVANCED PARSING COMPLETE ====\n");
     Ok(classes)
 }
 
@@ -184,7 +234,7 @@ impl CodeParser {
     }
 
     /// Parse all classes and return them as a flat list
-    pub fn parse_classes(&self) -> Vec<CodeClass> {
+    pub fn parse_classes(&self, file_path: &std::path::Path) -> Vec<GameClass> {
         let mut classes = Vec::new();
         debug!("\n=== Starting class parsing ===");
         
@@ -194,7 +244,7 @@ impl CodeParser {
             debug!("Item {}: {:?}", i, item);
         }
         
-        self.extract_classes(&self.config, &mut classes);
+        self.extract_classes(&self.config, &mut classes, file_path);
         debug!("\n=== Final class list ===");
         debug!("Found {} classes total", classes.len());
         for class in &classes {
@@ -203,7 +253,7 @@ impl CodeParser {
         classes
     }
 
-    fn extract_classes(&self, config: &Config, classes: &mut Vec<CodeClass>) {
+    fn extract_classes(&self, config: &Config, classes: &mut Vec<GameClass>, file_path: &std::path::Path) {
         debug!("\n=== Starting class extraction ===");
         debug!("Config has {} top-level properties", config.0.len());
         
@@ -217,11 +267,12 @@ impl CodeParser {
                         debug!("Found forward declaration: {}", name.as_str());
                         if !classes.iter().any(|c| c.name == name.as_str()) {
                             debug!("Adding forward declaration for class: {}", name.as_str());
-                            classes.push(CodeClass {
+                            classes.push(GameClass {
                                 name: name.as_str().to_string(),
                                 parent: None,
                                 properties: Vec::new(),
                                 container_class: None,
+                                file_path: file_path.to_path_buf(),
                             });
                         }
                     },
@@ -229,7 +280,7 @@ impl CodeParser {
                         // Handle base class definitions (classes without inheritance)
                         if parent.is_none() {
                             debug!("Found base class: {}", name.as_str());
-                            let class_def = self.create_class(name.as_str(), None, properties, classes, false);
+                            let class_def = self.create_class(name.as_str(), None, properties, classes, false, file_path);
                             if !classes.iter().any(|c| c.name == name.as_str()) {
                                 debug!("Adding base class: {}", name.as_str());
                                 classes.push(class_def);
@@ -262,7 +313,7 @@ impl CodeParser {
                             debug!("Processing class definition: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                             
                             // Create the class with its full definition
-                            let class_def = self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, false);
+                            let class_def = self.create_class(name.as_str(), parent.as_ref().map(|p| p.as_str()), properties, classes, false, file_path);
                             
                             // Update or add the class definition
                             if let Some(idx) = classes.iter().position(|c| c.name == name.as_str()) {
@@ -290,7 +341,8 @@ impl CodeParser {
                                         nested_parent.as_ref().map(|p| p.as_str()),
                                         nested_props,
                                         classes,
-                                        false
+                                        false,
+                                        file_path
                                     );
                                     
                                     // Add parent info to nested class
@@ -321,15 +373,16 @@ impl CodeParser {
                                 debug!("Processing root-level class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                                 
                                 // Create and add the root container class (e.g., CfgWeapons)
-                                let mut container_class = CodeClass {
+                                let mut container_class = GameClass {
                                     name: name.as_str().to_string(),
                                     parent: parent.as_ref().map(|p| p.as_str().to_string()),
                                     properties: Vec::new(),
                                     container_class: None,
+                                    file_path: file_path.to_path_buf(),
                                 };
                                 
                                 // Process properties and nested classes
-                                self.process_class_properties(properties, &mut container_class, classes);
+                                self.process_class_properties(properties, &mut container_class, classes, file_path);
                                 
                                 // Add the container class
                                 container_classes.push(container_class);
@@ -362,39 +415,40 @@ impl CodeParser {
     }
     
     /// Create a class from its name, parent, and properties
-    fn create_class(&self, name: &str, parent: Option<&str>, properties: &[Property], classes: &mut Vec<CodeClass>, add_to_classes: bool) -> CodeClass {
-        let mut code_class = CodeClass {
+    fn create_class(&self, name: &str, parent: Option<&str>, properties: &[Property], classes: &mut Vec<GameClass>, add_to_classes: bool, file_path: &std::path::Path) -> GameClass {
+        let mut game_class = GameClass {
             name: name.to_string(),
             parent: parent.map(|p| p.to_string()),
             properties: Vec::new(),
             container_class: None,
+            file_path: file_path.to_path_buf(),
         };
         
         // Process properties
-        self.process_class_properties(properties, &mut code_class, classes);
+        self.process_class_properties(properties, &mut game_class, classes, file_path);
         
         // If we're instructed to add it to classes, do so
         if add_to_classes {
             // Check if we already have this class
-            if let Some(idx) = classes.iter().position(|c| c.name == name && c.container_class == code_class.container_class) {
+            if let Some(idx) = classes.iter().position(|c| c.name == name && c.container_class == game_class.container_class) {
                 // Update existing class
-                classes[idx] = code_class.clone();
+                classes[idx] = game_class.clone();
             } else {
                 // Add new class
-                classes.push(code_class.clone());
+                classes.push(game_class.clone());
             }
         }
         
-        code_class
+        game_class
     }
     
     /// Process properties of a class and add them to the class
-    fn process_class_properties(&self, properties: &[Property], class: &mut CodeClass, classes: &mut Vec<CodeClass>) {
+    fn process_class_properties(&self, properties: &[Property], class: &mut GameClass, classes: &mut Vec<GameClass>, file_path: &std::path::Path) {
         for prop in properties {
             match prop {
                 Property::Entry { name, value, .. } => {
                     trace!("  Adding property: {}", name.as_str());
-                    class.properties.push(CodeProperty {
+                    class.properties.push(ClassProperty {
                         name: name.as_str().to_string(),
                         value: self.convert_value(value),
                     });
@@ -404,20 +458,21 @@ impl CodeParser {
                         trace!("  Processing nested class: {} (parent: {:?})", name.as_str(), parent.as_ref().map(|p| p.as_str()));
                         
                         // Create the nested class with proper container info
-                        let mut nested = CodeClass {
+                        let mut nested = GameClass {
                             name: name.as_str().to_string(),
                             parent: parent.as_ref().map(|p| p.as_str().to_string()),
                             properties: Vec::new(),
                             container_class: Some(class.name.clone()),
+                            file_path: file_path.to_path_buf(),
                         };
                         
                         // Process properties of the nested class
-                        self.process_class_properties(properties, &mut nested, classes);
+                        self.process_class_properties(properties, &mut nested, classes, file_path);
                         
                         // Add the nested class as a property of the current class
-                        class.properties.push(CodeProperty {
+                        class.properties.push(ClassProperty {
                             name: name.as_str().to_string(),
-                            value: CodeValue::Class(nested.clone()),
+                            value: PropertyValue::Class(Box::new(nested.clone())),
                         });
                         
                         // Also add the nested class to the classes list with its container info
@@ -433,14 +488,14 @@ impl CodeParser {
         }
     }
 
-    fn convert_value(&self, value: &Value) -> CodeValue {
+    fn convert_value(&self, value: &Value) -> PropertyValue {
         match value {
-            Value::Str(s) => CodeValue::String(s.value().to_string()),
+            Value::Str(s) => PropertyValue::String(s.value().to_string()),
             Value::Number(n) => {
                 match n {
-                    hemtt_config::Number::Int32 { value, .. } => CodeValue::Number(*value as i64),
-                    hemtt_config::Number::Int64 { value, .. } => CodeValue::Number(*value),
-                    hemtt_config::Number::Float32 { value, .. } => CodeValue::Number(*value as i64),
+                    hemtt_config::Number::Int32 { value, .. } => PropertyValue::Number(*value as i64),
+                    hemtt_config::Number::Int64 { value, .. } => PropertyValue::Number(*value),
+                    hemtt_config::Number::Float32 { value, .. } => PropertyValue::Number(*value as i64),
                 }
             }
             Value::Array(arr) => {
@@ -496,40 +551,12 @@ impl CodeParser {
                         _ => values.push("Unknown".to_string()),
                     }
                 }
-                CodeValue::Array(values)
+                PropertyValue::Array(values)
             }
-            Value::Expression(_) => CodeValue::String("Expression".to_string()),
-            _ => CodeValue::String(String::new()),
+            Value::Expression(_) => PropertyValue::String("Expression".to_string()),
+            _ => PropertyValue::String(String::new()),
         }
     }
-}
-
-#[derive(Debug)]
-pub struct ScanResult {
-    pub files_scanned: usize,
-    pub classes_found: usize,
-    pub files_with_errors: usize,
-    pub class_map: HashMap<String, Vec<CodeClass>>,
-}
-
-pub fn get_derived_classes(result: &ScanResult, base_class: &str) -> Vec<String> {
-    let mut derived = Vec::new();
-    
-    // Convert base_class to lowercase for case-insensitive matching
-    let base_class_lower = base_class.to_lowercase();
-    
-    for instances in result.class_map.values() {
-        for class in instances {
-            if let Some(parent) = &class.parent {
-                // Use case-insensitive comparison
-                if parent.to_lowercase() == base_class_lower {
-                    derived.push(class.name.clone());
-                }
-            }
-        }
-    }
-    
-    derived
 }
 
 #[cfg(test)]
@@ -547,7 +574,8 @@ mod tests {
         "#;
 
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let temp_file = std::path::Path::new("test_basic_class_parsing.hpp");
+        let classes = parser.parse_classes(&temp_file);
 
         assert_eq!(classes.len(), 1);
         assert_eq!(classes[0].name, "BaseMan");
@@ -566,7 +594,8 @@ mod tests {
         "#;
 
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let temp_file = std::path::Path::new("test_inheritance.hpp");
+        let classes = parser.parse_classes(&temp_file);
 
         assert_eq!(classes.len(), 2);
         assert_eq!(classes[1].parent.as_deref(), Some("BaseMan"));
@@ -584,14 +613,15 @@ mod tests {
             };
         "#;
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let temp_file = std::path::Path::new("test_array_with_list_macro.hpp");
+        let classes = parser.parse_classes(&temp_file);
         
         assert_eq!(classes.len(), 1);
         let test_class = &classes[0];
         assert_eq!(test_class.name, "Test");
         
         let uniform_prop = test_class.properties.iter().find(|p| p.name == "uniform").unwrap();
-        if let CodeValue::Array(uniforms) = &uniform_prop.value {
+        if let PropertyValue::Array(uniforms) = &uniform_prop.value {
             // Check for the specific format of the LIST_2 macro
             assert!(uniforms.iter().any(|u| u.contains("LIST_2")));
             assert!(uniforms.contains(&"usp_g3c_rs_kp_mx_aor2".to_string()));
@@ -614,14 +644,15 @@ mod tests {
             };
         "#;
         let parser = CodeParser::new(content).unwrap();
-        let classes = parser.parse_classes();
+        let temp_file = std::path::Path::new("test_generic_macro.hpp");
+        let classes = parser.parse_classes(&temp_file);
         
         assert_eq!(classes.len(), 1);
         let test_class = &classes[0];
         assert_eq!(test_class.name, "GenericTest");
         
         let weapons_prop = test_class.properties.iter().find(|p| p.name == "weapons").unwrap();
-        if let CodeValue::Array(weapons) = &weapons_prop.value {
+        if let PropertyValue::Array(weapons) = &weapons_prop.value {
             // Should contain 3 items - a simple string and 2 different macro types
             assert_eq!(weapons.len(), 3);
             
