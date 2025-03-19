@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use models::{Scanner, ScanResult, GameClass};
+use gamedata_scanner_models::{Scanner, ScanResult, GameClass};
 use crate::parse_file as advanced_parse_file;
 
 /// Advanced scanner implementation

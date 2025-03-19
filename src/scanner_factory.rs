@@ -1,6 +1,6 @@
 use std::sync::Arc;
-use models::Scanner as ClassScanner;
-use models::FileParser;
+use gamedata_scanner_models::Scanner as ClassScanner;
+use gamedata_scanner_models::FileParser;
 
 /// Returns a scanner implementation based on the scanner type 
 pub fn get_scanner(advanced: bool) -> Arc<dyn ClassScanner> {

@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::time::Instant;
-use models::{Scanner, ScanResult, GameClass};
+use gamedata_scanner_models::{Scanner, ScanResult, GameClass};
 use crate::SimpleClassScanner;
 
 /// Simple scanner implementation 

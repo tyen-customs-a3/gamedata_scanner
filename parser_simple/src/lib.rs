@@ -3,7 +3,7 @@ use std::fs;
 use regex::Regex;
 use log::{debug, trace};
 use std::collections::HashMap;
-use models::{GameClass, ScanResult, FileParser};
+use gamedata_scanner_models::{GameClass, ScanResult, FileParser};
 
 // Re-export the scanner module
 pub mod scanner;

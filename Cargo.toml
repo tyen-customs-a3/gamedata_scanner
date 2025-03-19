@@ -31,7 +31,7 @@ hemtt-common = { path = "../HEMTT/libs/common" }
 [dependencies]
 parser_advanced = { path = "./parser_advanced" }
 parser_simple = { path = "./parser_simple" }
-models = { path = "./models" }
+gamedata_scanner_models = { path = "./models" }
 rayon = "1.10.0"
 serde = { version = "1.0.219", features = ["derive"] }
 tempfile = "3.19.0"

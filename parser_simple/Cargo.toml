@@ -7,7 +7,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
-models = { path = "../models" }
+gamedata_scanner_models = { path = "../models" }
 serde = { version = "1.0.219", features = ["derive"] }
 log = "0.4.26"
 regex = "1.11.1"

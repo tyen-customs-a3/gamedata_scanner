@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use parser_advanced::parse_file;
-use models::GameClass;
+use gamedata_scanner_models::GameClass;
 use serde::{Deserialize, Serialize};
 use std::thread;
 use std::sync::mpsc::{self, RecvTimeoutError};

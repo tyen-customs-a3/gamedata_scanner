@@ -7,7 +7,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
-models = { path = "../models" }
+gamedata_scanner_models = { path = "../models" }
 hemtt-config = { workspace = true }
 hemtt-workspace = { workspace = true }
 hemtt-preprocessor = { workspace = true }

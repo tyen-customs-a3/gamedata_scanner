@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use parser_advanced::CodeParser;
-    use models::PropertyValue;
+    use gamedata_scanner_models::PropertyValue;
     use std::path::Path;
 
     #[test]

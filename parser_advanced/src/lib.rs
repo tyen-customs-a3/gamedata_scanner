@@ -6,7 +6,7 @@ use hemtt_preprocessor::Processor;
 use hemtt_workspace::{reporting::{Codes, Code, Diagnostic, Severity}, LayerType, Workspace};
 use tempfile::NamedTempFile;
 use log::{debug, trace};
-use models::{GameClass, ClassProperty, PropertyValue, ScanResult, FileParser};
+use gamedata_scanner_models::{GameClass, ClassProperty, PropertyValue, ScanResult, FileParser};
 use walkdir::WalkDir;
 
 mod parser;

@@ -30,7 +30,7 @@
 use std::path::Path;
 
 // Re-export models from models
-pub use models::{
+pub use gamedata_scanner_models::{
     GameClass, ClassProperty, PropertyValue, Scanner as ClassScanner, 
     ScanResult, FileParser
 };

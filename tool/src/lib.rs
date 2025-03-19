@@ -16,7 +16,7 @@ use serde::{Serialize, Deserialize};
 
 // Use the gamedata_scanner library as the entry point to scanner functionality
 use gamedata_scanner::{ClassScanner, get_scanner, GameClass};
-use models::ScanResult;
+use gamedata_scanner_models::ScanResult;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ScanSummary {

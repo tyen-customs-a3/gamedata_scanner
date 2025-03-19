@@ -1,5 +1,5 @@
 use parser_advanced::CodeParser;
-use models::PropertyValue;
+use gamedata_scanner_models::PropertyValue;
 use std::fs;
 use std::path::Path;
 
